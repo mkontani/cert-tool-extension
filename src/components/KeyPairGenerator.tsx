@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import forge from 'node-forge';
 import { Download, Copy, RefreshCw, AlertCircle, Check } from 'lucide-react';
 
 type Algorithm = 'RSA' | 'Ed25519' | 'ECDSA';
 type KeySize = 2048 | 4096;
-type Curve = 'P-256' | 'P-384';
+type Curve = 'P-256' | 'P-384' | 'P-521';
 
 export default function KeyPairGenerator() {
     const [algorithm, setAlgorithm] = useState<Algorithm>('RSA');
@@ -44,13 +43,32 @@ export default function KeyPairGenerator() {
                 let pubPem = '';
 
                 if (algorithm === 'RSA') {
-                    const keys = forge.pki.rsa.generateKeyPair({ bits: keySize, workers: -1 });
-                    privPem = forge.pki.privateKeyToPem(keys.privateKey);
-                    pubPem = forge.pki.publicKeyToPem(keys.publicKey);
+                    const keys = await window.crypto.subtle.generateKey(
+                        {
+                            name: 'RSASSA-PKCS1-v1_5',
+                            modulusLength: keySize,
+                            publicExponent: new Uint8Array([1, 0, 1]),
+                            hash: 'SHA-256',
+                        },
+                        true,
+                        ['sign', 'verify']
+                    );
+                    const privBuf = await window.crypto.subtle.exportKey('pkcs8', keys.privateKey);
+                    const pubBuf = await window.crypto.subtle.exportKey('spki', keys.publicKey);
+
+                    privPem = formatPem('PRIVATE KEY', arrayBufferToBase64(privBuf));
+                    pubPem = formatPem('PUBLIC KEY', arrayBufferToBase64(pubBuf));
                 } else if (algorithm === 'Ed25519') {
-                    const keys = forge.pki.ed25519.generateKeyPair();
-                    privPem = forge.pki.privateKeyToPem(keys.privateKey);
-                    pubPem = forge.pki.publicKeyToPem(keys.publicKey);
+                    const keys = await window.crypto.subtle.generateKey(
+                        { name: 'Ed25519' },
+                        true,
+                        ['sign', 'verify']
+                    );
+                    const privBuf = await window.crypto.subtle.exportKey('pkcs8', keys.privateKey);
+                    const pubBuf = await window.crypto.subtle.exportKey('spki', keys.publicKey);
+
+                    privPem = formatPem('PRIVATE KEY', arrayBufferToBase64(privBuf));
+                    pubPem = formatPem('PUBLIC KEY', arrayBufferToBase64(pubBuf));
                 } else if (algorithm === 'ECDSA') {
                     const keys = await window.crypto.subtle.generateKey(
                         { name: 'ECDSA', namedCurve: curve },
@@ -138,6 +156,7 @@ export default function KeyPairGenerator() {
                         >
                             <option value="P-256">P-256</option>
                             <option value="P-384">P-384</option>
+                            <option value="P-521">P-521</option>
                         </select>
                     </div>
                 )}
