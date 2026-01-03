@@ -127,8 +127,8 @@ export default function KeyPairGenerator() {
                         disabled={isGenerating}
                     >
                         <option value="RSA">RSA</option>
-                        <option value="Ed25519">Ed25519</option>
                         <option value="ECDSA">ECDSA</option>
+                        <option value="Ed25519">Ed25519</option>
                     </select>
                 </div>
 

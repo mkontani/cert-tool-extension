@@ -27,6 +27,76 @@ export default function CertInspector() {
         }).join(', ');
     };
 
+    const ipToString = (ip: string) => {
+        if (!ip) return '';
+        if (ip.length === 4) {
+            return Array.from(ip).map(c => c.charCodeAt(0)).join('.');
+        } else if (ip.length === 16) {
+            const hex = [];
+            for (let i = 0; i < 16; i += 2) {
+                hex.push(((ip.charCodeAt(i) << 8) | ip.charCodeAt(i + 1)).toString(16));
+            }
+            return hex.join(':').replace(/(^|:)0(:0)*(:|$)/, '$1::$3').replace(/:{3,}/, '::');
+        }
+        return ip;
+    };
+
+    const decodeExtension = (ext: any) => {
+        if (ext.altNames) {
+            return ext.altNames.map((an: any) => {
+                const typeMap: Record<number, string> = { 1: 'Email', 2: 'DNS', 6: 'URI', 7: 'IP' };
+                const label = typeMap[an.type] || `Type${an.type}`;
+                let v = an.value || an.ip || an.email || an.uri;
+                if (an.type === 7 && typeof v === 'string') {
+                    v = ipToString(v);
+                }
+                return `${label}:${v}`;
+            }).join(', ');
+        }
+
+        if (ext.name === 'basicConstraints') {
+            const parts = [];
+            if (ext.cA !== undefined) parts.push(`CA:${ext.cA}`);
+            if (ext.pathLenConstraint !== undefined) parts.push(`pathLen:${ext.pathLenConstraint}`);
+            return parts.length > 0 ? parts.join(', ') : 'None';
+        }
+
+        if (ext.name === 'keyUsage') {
+            const usages: string[] = [];
+            const fields = [
+                'digitalSignature', 'nonRepudiation', 'keyEncipherment', 'dataEncipherment',
+                'keyAgreement', 'keyCertSign', 'cRLSign', 'encipherOnly', 'decipherOnly'
+            ];
+            fields.forEach(f => {
+                if (ext[f]) usages.push(f);
+            });
+            return usages.length > 0 ? usages.join(', ') : 'None';
+        }
+
+        if (ext.name === 'extKeyUsage') {
+            const usages: string[] = [];
+            const fields = [
+                'serverAuth', 'clientAuth', 'codeSigning', 'emailProtection', 'timeStamping', 'OCSPSigning'
+            ];
+            fields.forEach(f => {
+                if (ext[f]) usages.push(f);
+            });
+            // If forge didn't set boolean flags, check property directly (node-forge quirk)
+            return usages.length > 0 ? usages.join(', ') : String(ext.value);
+        }
+
+        if (typeof ext.value !== 'string') {
+            try { return JSON.stringify(ext.value); } catch (e) { }
+        }
+
+        // If it's a raw string that looks like binary, it's likely just binary garbage
+        if (typeof ext.value === 'string' && /[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]/.test(ext.value)) {
+            return '(Encoded Binary Data)';
+        }
+
+        return String(ext.value);
+    };
+
     const parseInput = () => {
         setError(null);
         setInfo(null);
@@ -42,42 +112,50 @@ export default function CertInspector() {
                 if (extAttr && extAttr.extensions) {
                     extensions = extAttr.extensions.map((ext: any) => ({
                         name: ext.name || ext.id,
-                        value: JSON.stringify(ext.value) || '', // simplified
+                        value: decodeExtension(ext),
                         critical: ext.critical
                     }));
-                    // Try to decode common extensions if possible?
-                    // Forge usually decodes SANs if structured
+                }
+
+                let pubKeyAlgo = 'Unknown';
+                let pubKeySize: number | undefined = undefined;
+                if ((csr.publicKey as any).n) {
+                    pubKeyAlgo = 'RSA';
+                    pubKeySize = (csr.publicKey as any).n.bitLength();
+                } else if ((csr.publicKey as any).curve) {
+                    pubKeyAlgo = `ECDSA (${(csr.publicKey as any).curve})`;
+                } else if ((csr.publicKey as any).ed25519) {
+                    pubKeyAlgo = 'Ed25519';
                 }
 
                 setInfo({
                     type: 'Certificate Signing Request (CSR)',
                     subject: formatDN(csr.subject.attributes),
-                    pubKeyAlgo: 'RSA (Assumed)', // forge usually
-                    signatureAlgo: (csr as any).signatureOid ? forge.pki.oids[(csr as any).signatureOid] : 'Unknown',
+                    pubKeyAlgo,
+                    pubKeySize,
+                    signatureAlgo: (csr as any).signatureOid ? (forge.pki.oids[(csr as any).signatureOid] || (csr as any).signatureOid) : 'Unknown',
                     extensions
                 });
 
             } else if (inputPem.includes('CERTIFICATE')) {
                 const cert = forge.pki.certificateFromPem(inputPem);
 
-                const extensions = cert.extensions.map((ext: any) => {
-                    let val = ext.value;
-                    if (ext.altNames) {
-                        val = ext.altNames.map((an: any) => `${an.type === 2 ? 'DNS' : (an.type === 7 ? 'IP' : 'Type' + an.type)}:${an.value}`).join(', ');
-                    } else if (typeof val === 'object') {
-                        try { val = JSON.stringify(val); } catch (e) { }
-                    }
-                    // KeyUsage
-                    if (ext.keyUsage) { // specific handling if I want to decode bitmap? Forge might decode `keyUsage` properly?
-                        // Forge usually adds properties to ext object for standard exts
-                    }
+                const extensions = cert.extensions.map((ext: any) => ({
+                    name: ext.name || ext.id,
+                    value: decodeExtension(ext),
+                    critical: ext.critical
+                }));
 
-                    return {
-                        name: ext.name || ext.id,
-                        value: String(val),
-                        critical: ext.critical
-                    };
-                });
+                let pubKeyAlgo = 'Unknown';
+                let pubKeySize: number | undefined = undefined;
+                if ((cert.publicKey as any).n) {
+                    pubKeyAlgo = 'RSA';
+                    pubKeySize = (cert.publicKey as any).n.bitLength();
+                } else if ((cert.publicKey as any).curve) {
+                    pubKeyAlgo = `ECDSA (${(cert.publicKey as any).curve})`;
+                } else if ((cert.publicKey as any).ed25519) {
+                    pubKeyAlgo = 'Ed25519';
+                }
 
                 setInfo({
                     type: 'X.509 Certificate',
@@ -86,8 +164,8 @@ export default function CertInspector() {
                     serial: cert.serialNumber, // hex string usually
                     notBefore: cert.validity.notBefore.toUTCString(),
                     notAfter: cert.validity.notAfter.toUTCString(),
-                    pubKeyAlgo: (cert.publicKey as any).n ? 'RSA' : 'Unknown', // primitive check
-                    pubKeySize: (cert.publicKey as any).n ? (cert.publicKey as any).n.bitLength() : undefined,
+                    pubKeyAlgo,
+                    pubKeySize,
                     signatureAlgo: forge.pki.oids[cert.signatureOid] || cert.signatureOid,
                     extensions
                 });
