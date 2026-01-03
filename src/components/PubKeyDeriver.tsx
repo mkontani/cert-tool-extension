@@ -55,7 +55,7 @@ export default function PubKeyDeriver() {
                         try {
                             key = await window.crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
                             if (key) break;
-                        } catch (e) { continue; }
+                        } catch (_e) { continue; }
                     }
 
                     if (!key) throw new Error("Could not import Private Key. Format might be unsupported.");

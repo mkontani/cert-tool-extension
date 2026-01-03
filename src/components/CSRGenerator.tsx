@@ -36,7 +36,7 @@ export default function CSRGenerator() {
             let key;
             try {
                 key = forge.pki.privateKeyFromPem(privateKey);
-            } catch (e) {
+            } catch (_e) {
                 throw new Error('Invalid Private Key PEM. Please check your input.');
             }
 

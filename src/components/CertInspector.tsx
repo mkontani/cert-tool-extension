@@ -86,7 +86,7 @@ export default function CertInspector() {
         }
 
         if (typeof ext.value !== 'string') {
-            try { return JSON.stringify(ext.value); } catch (e) { }
+            try { return JSON.stringify(ext.value); } catch (_e) { /* ignore */ }
         }
 
         // If it's a raw string that looks like binary, it's likely just binary garbage
