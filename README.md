@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# Cert Tool Chrome Extension
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![Cert Tool Icon](public/icons/icon128.png)
 
-Currently, two official plugins are available:
+A powerful and elegant Chrome extension for handling X.509 certificates and cryptographic keys. Designed with a premium dark-mode interface and glassmorphism aesthetics.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+### 1. Key Pair Generation
+Generate cryptographic key pairs instantly using the Web Crypto API.
+- **Algorithms**: RSA (2048, 4096 bits), ECDSA (P-256, P-384, P-521), and Ed25519.
+- **Standard Formats**: Private keys are exported in **PKCS#8** and public keys in **SPKI**.
+- **Save As**: Easily download keys with a standard OS save dialog.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. CSR Generation
+Create Certificate Signing Requests (CSR) with a user-friendly form.
+- **Customizable DN**: Set Common Name, Organization, Country, and more.
+- **SAN Support**: Add multiple Subject Alternative Names (DNS, IP, Email, URI).
+- **Flexible Signing**: Sign the request using your own private key.
 
-## Expanding the ESLint configuration
+### 3. Public Key Derivation
+Extract the public key component from various sources.
+- **Input Types**: Supports Private Keys (PKCS#8/PKCS#1), Certificates, or CSRs.
+- **Auto-Detection**: Automatically identifies the input type and algorithm.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 4. Certificate/CSR Inspector
+View detailed information about certificates and signing requests.
+- **Comprehensive View**: Shows Serial Number, Subject, Issuer, Validity, and Public Key details.
+- **Extension Decoding**: Human-readable decoding for SANs, Basic Constraints, Key Usage, and Extended Key Usage (EKU).
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Installation
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Clone this repository.
+2. Run `npm install` to install dependencies.
+3. Run `npm run build` to generate the production build in the `dist` folder.
+4. Open Chrome and navigate to `chrome://extensions`.
+5. Enable "Developer mode" (top right).
+6. Click "Load unpacked" and select the `dist` directory.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Technology Stack
+- **Framework**: Vite + React + TypeScript
+- **Crypto Library**: [node-forge](https://github.com/digitalbazaar/forge) & Web Crypto API
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Styling**: Vanilla CSS with Glassmorphism effects
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+Developed with focus on security, usability, and modern aesthetics.
