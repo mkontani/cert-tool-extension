@@ -112,16 +112,52 @@ export default function CSRGenerator() {
         });
     };
 
-    const downloadCSR = () => {
+    const downloadCSR = async () => {
+        const filename = `${formData.commonName.replace(/\s+/g, '_') || 'request'}.csr`;
+
+        // 1. Try modern File System Access API
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await (window as any).showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'CSR File',
+                        accept: { 'text/plain': ['.csr'] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(csrOutput);
+                await writable.close();
+                return;
+            } catch (e: any) {
+                if (e.name === 'AbortError') return;
+            }
+        }
+
+        // 2. Try Chrome Extension Downloads API
+        if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
+            const blob = new Blob([csrOutput], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            chrome.downloads.download({
+                url: url,
+                filename: filename,
+                saveAs: true
+            }, () => {
+                URL.revokeObjectURL(url);
+            });
+            return;
+        }
+
+        // 3. Fallback
         const blob = new Blob([csrOutput], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${formData.commonName.replace(/\s+/g, '_') || 'request'}.csr`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     };
 
     return (

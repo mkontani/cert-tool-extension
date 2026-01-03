@@ -100,7 +100,43 @@ export default function KeyPairGenerator() {
         });
     };
 
-    const downloadFile = (content: string, filename: string) => {
+    const downloadFile = async (content: string, filename: string, ext?: string) => {
+        // 1. Try modern File System Access API (works in most modern Chromes)
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await (window as any).showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'Certificate/Key File',
+                        accept: { 'text/plain': ext ? [`.${ext}`] : ['.pem', '.key', '.csr'] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(content);
+                await writable.close();
+                return;
+            } catch (e: any) {
+                // AbortError means user cancelled, which is fine.
+                if (e.name === 'AbortError') return;
+                console.error('File System Access API failed', e);
+            }
+        }
+
+        // 2. Try Chrome Extension Downloads API
+        if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            chrome.downloads.download({
+                url: url,
+                filename: filename,
+                saveAs: true
+            }, () => {
+                URL.revokeObjectURL(url);
+            });
+            return;
+        }
+
+        // 3. Last resort fallback (Silent download in some cases)
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -109,7 +145,7 @@ export default function KeyPairGenerator() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     };
 
     return (
@@ -214,7 +250,7 @@ export default function KeyPairGenerator() {
                                 <button
                                     className="btn-secondary"
                                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => downloadFile(privateKey, 'private.key')}
+                                    onClick={() => downloadFile(privateKey, 'private.key', 'key')}
                                 >
                                     <Download size={14} />
                                     <span style={{ marginLeft: '4px' }}>Save</span>
@@ -245,7 +281,7 @@ export default function KeyPairGenerator() {
                                 <button
                                     className="btn-secondary"
                                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => downloadFile(publicKey, 'public.pem')}
+                                    onClick={() => downloadFile(publicKey, 'public.pem', 'pem')}
                                 >
                                     <Download size={14} />
                                     <span style={{ marginLeft: '4px' }}>Save</span>

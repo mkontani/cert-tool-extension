@@ -119,16 +119,52 @@ export default function PubKeyDeriver() {
         });
     };
 
-    const downloadKey = () => {
+    const downloadKey = async () => {
+        const filename = 'public_key.pem';
+
+        // 1. Try modern File System Access API
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await (window as any).showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'Public Key File',
+                        accept: { 'text/plain': ['.pem'] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(publicKey);
+                await writable.close();
+                return;
+            } catch (e: any) {
+                if (e.name === 'AbortError') return;
+            }
+        }
+
+        // 2. Try Chrome Extension Downloads API
+        if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
+            const blob = new Blob([publicKey], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            chrome.downloads.download({
+                url: url,
+                filename: filename,
+                saveAs: true
+            }, () => {
+                URL.revokeObjectURL(url);
+            });
+            return;
+        }
+
+        // 3. Fallback
         const blob = new Blob([publicKey], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'public_key.pem';
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     };
 
     return (
