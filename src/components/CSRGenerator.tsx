@@ -73,12 +73,20 @@ export default function CSRGenerator() {
                         extensions: [{
                             name: 'subjectAltName',
                             altNames: sans.map(s => {
-                                // detection of IP vs DNS
-                                const isIp = /^[0-9.]+$/.test(s);
-                                if (isIp) {
+                                // detection of SAN type
+                                // Check URI first because it contains ':' but isn't an IP
+                                if (/^[a-z]+:\/\/.+$/i.test(s)) {
+                                    return { type: 6, value: s };
+                                }
+                                // Check IP (v4 or v6)
+                                if (/^[0-9.]+$/.test(s) || (/^[a-fA-F0-9:]+$/.test(s) && s.includes(':'))) {
                                     return { type: 7, ip: s };
                                 }
-                                return { type: 2, value: s }; // 2 is DNS
+                                // Check Email
+                                if (/^.+@.+\..+$/.test(s)) {
+                                    return { type: 1, value: s };
+                                }
+                                return { type: 2, value: s }; // Default to DNS
                             })
                         }]
                     }]);
