@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import forge from 'node-forge';
-import { Key, ArrowDownCircle, Copy, Check, Download, AlertCircle } from 'lucide-react';
+import { Key, ArrowDownCircle, Copy, Check, Download, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function PubKeyDeriver() {
     const [inputPem, setInputPem] = useState('');
@@ -8,13 +8,25 @@ export default function PubKeyDeriver() {
     const [sourceType, setSourceType] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [copyStatus, setCopyStatus] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
-    const derivePublicKey = () => {
+    const decodePem = (pem: string) => {
+        const base64 = pem.replace(/-----BEGIN [^-]+-----|-----END [^-]+-----|\s/g, '');
+        const binary = window.atob(base64);
+        const buffer = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            buffer[i] = binary.charCodeAt(i);
+        }
+        return buffer.buffer;
+    };
+    const derivePublicKey = async () => {
         setError(null);
         setPublicKey('');
         setSourceType(null);
+        setIsProcessing(true);
 
         if (!inputPem.trim()) {
+            setIsProcessing(false);
             return;
         }
 
@@ -24,17 +36,51 @@ export default function PubKeyDeriver() {
 
             if (inputPem.includes('PRIVATE KEY')) {
                 detectedType = 'Private Key';
+                // Use Web Crypto to extract public key from PKCS#8
                 try {
+                    const pkcs8Buffer = decodePem(inputPem);
+
+                    // We need to know the algorithm. PKCS#8 labels don't tell us easily without ASN.1 parsing.
+                    // We can try RSA, then Ed25519, then ECDSA.
+                    let key = null;
+                    const algorithms = [
+                        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+                        { name: 'ECDSA', namedCurve: 'P-256' },
+                        { name: 'ECDSA', namedCurve: 'P-384' },
+                        { name: 'ECDSA', namedCurve: 'P-521' },
+                        { name: 'Ed25519' }
+                    ];
+
+                    for (const alg of algorithms) {
+                        try {
+                            key = await window.crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
+                            if (key) break;
+                        } catch (e) { continue; }
+                    }
+
+                    if (!key) throw new Error("Could not import Private Key. Format might be unsupported.");
+
+                    // Export as SPKI (Public Key)
+                    // Wait, you can't exportKey 'spki' from a 'private' key object usually? 
+                    // Actually, you usually can't. But you can GENERATE the public key or it's implicitly there.
+                    // In Web Crypto, a private key object doesn't always allow exporting the public part directly.
+
+                    // TRICK: If we can't export spki from private, we might need node-forge for extraction after all,
+                    // OR use a proper PKCS#8 parser.
+
+                    // Let's try node-forge PEM parsing again but CLEANER now that headers are fixed.
                     const priv = forge.pki.privateKeyFromPem(inputPem);
-                    if ((priv as any).n && (priv as any).e) {
+                    if ((priv as any).n) {
                         pubKeyObj = forge.pki.setRsaPublicKey((priv as any).n, (priv as any).e);
                     } else {
-                        // Fallback or specific Ed25519 attempt
+                        // For Ed25519, forge might store it differently
                         pubKeyObj = (priv as any).publicKey || null;
                     }
-                } catch (e) {
-                    // If forge fails, it might be a format it doesn't like (like Ed25519 in some versions)
-                    detectedType = 'Private Key (Unknown Format)';
+
+                    if (!pubKeyObj) throw new Error("Could not extract public key component.");
+
+                } catch (e: any) {
+                    throw new Error("Private Key Parsing Error: " + e.message);
                 }
             } else if (inputPem.includes('CERTIFICATE REQUEST')) {
                 detectedType = 'CSR';
@@ -54,12 +100,15 @@ export default function PubKeyDeriver() {
             if (!pubKeyObj) {
                 throw new Error("Could not extract Public Key from the input.");
             }
+
             setSourceType(detectedType);
             const pubPem = forge.pki.publicKeyToPem(pubKeyObj);
             setPublicKey(pubPem);
 
         } catch (e: any) {
             setError(e.message || "Failed to derive public key");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -100,10 +149,14 @@ export default function PubKeyDeriver() {
                 />
             </div>
 
-            <button className="btn" onClick={derivePublicKey} style={{ width: '100%', marginBottom: '1.5rem' }}>
-                <ArrowDownCircle size={18} style={{ marginRight: '0.5rem' }} />
+            <button className="btn" onClick={derivePublicKey} disabled={isProcessing} style={{ width: '100%', marginBottom: '1.5rem' }}>
+                {isProcessing ? <Loader2 className="spin" size={18} style={{ marginRight: '0.5rem', animation: 'spin 1s linear infinite' }} /> : <ArrowDownCircle size={18} style={{ marginRight: '0.5rem' }} />}
                 Extract Public Key
             </button>
+
+            <style>{`
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+      `}</style>
 
             {error && (
                 <div style={{

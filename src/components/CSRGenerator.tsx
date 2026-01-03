@@ -26,10 +26,6 @@ export default function CSRGenerator() {
         setError(null);
         setCsrOutput('');
 
-        if (!formData.commonName) {
-            setError('Common Name is required.');
-            return;
-        }
         if (!privateKey) {
             setError('Private Key is required.');
             return;
@@ -53,11 +49,8 @@ export default function CSRGenerator() {
             } else {
                 throw new Error("Could not determine public key from the provided private key.");
             }
-            // Wait, if it's Ed25519, setPublicKey might be different.
-            // Forge's createCertificationRequest mainly targets RSA/ECDSA.
-            // Let's assume standard usage. If it fails, we catch it.
 
-            csr.setSubject([
+            const subject = [
                 { name: 'commonName', value: formData.commonName },
                 { name: 'organizationName', value: formData.organization },
                 { name: 'organizationalUnitName', value: formData.organizationalUnit },
@@ -65,7 +58,11 @@ export default function CSRGenerator() {
                 { name: 'stateOrProvinceName', value: formData.state },
                 { name: 'localityName', value: formData.locality },
                 { name: 'emailAddress', value: formData.email }
-            ].filter(attr => attr.value)); // Filter out empty fields
+            ].filter(attr => attr.value);
+
+            if (subject.length > 0) {
+                csr.setSubject(subject);
+            }
 
             // SANs
             if (formData.sans) {
@@ -76,9 +73,12 @@ export default function CSRGenerator() {
                         extensions: [{
                             name: 'subjectAltName',
                             altNames: sans.map(s => {
-                                // primitive detection of IP vs DNS
+                                // detection of IP vs DNS
                                 const isIp = /^[0-9.]+$/.test(s);
-                                return { type: isIp ? 7 : 2, value: s }; // 2 is DNS, 7 is IP
+                                if (isIp) {
+                                    return { type: 7, ip: s };
+                                }
+                                return { type: 2, value: s }; // 2 is DNS
                             })
                         }]
                     }]);
@@ -125,7 +125,7 @@ export default function CSRGenerator() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                    <label>Common Name (CN) *</label>
+                    <label>Common Name (CN)</label>
                     <input name="commonName" value={formData.commonName} onChange={handleInputChange} placeholder="e.g. example.com" />
                 </div>
                 <div>

@@ -30,7 +30,7 @@ function App() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Key size={16} />
-            <span>Key Pair</span>
+            <span>Gen KeyPair</span>
           </div>
         </button>
         <button
@@ -39,7 +39,7 @@ function App() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <FileSignature size={16} />
-            <span>CSR</span>
+            <span>Gen CSR</span>
           </div>
         </button>
         <button
@@ -47,8 +47,8 @@ function App() {
           onClick={() => setActiveTab('pubkey')}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Key size={16} /> {/* Reusing Key icon for now */}
-            <span>Pub Key</span>
+            <Key size={16} />
+            <span>Derive PubKey</span>
           </div>
         </button>
         <button
