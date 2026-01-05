@@ -21,7 +21,7 @@ async function extractPublicKeyJwk(pkcs8Buffer: ArrayBuffer, alg: any): Promise<
     const jwk = await crypto.subtle.exportKey('jwk', privKey);
 
     // Create public JWK (remove private part 'd' and add key_ops)
-    const { d, ...publicJwk } = jwk;
+    const { d: _d, ...publicJwk } = jwk;
     return await crypto.subtle.importKey('jwk', publicJwk, alg, true, []);
 }
 
@@ -67,7 +67,7 @@ describe('ECDSA Crypto Fix', () => {
             expect(pubKey.type).toBe('public');
             const spki = await crypto.subtle.exportKey('spki', pubKey);
             expect(spki.byteLength).toBeGreaterThan(0);
-        } catch (e) {
+        } catch (_e) {
             console.log('Ed25519 not supported in this environment, skipping.');
         }
     });

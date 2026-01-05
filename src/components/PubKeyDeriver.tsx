@@ -65,7 +65,7 @@ export default function PubKeyDeriver() {
                     // JWK Trick to bypass export restrictions
                     const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
                     const jwk = await window.crypto.subtle.exportKey('jwk', privKey);
-                    const { d, ...publicJwk } = jwk;
+                    const { d: _d, ...publicJwk } = jwk;
                     const pubKey = await window.crypto.subtle.importKey('jwk', publicJwk, alg, true, []);
                     const spki = await window.crypto.subtle.exportKey('spki', pubKey);
 
@@ -79,7 +79,7 @@ export default function PubKeyDeriver() {
                     // Ed25519
                     const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Buffer, { name: 'Ed25519' }, true, ['sign']);
                     const jwk = await window.crypto.subtle.exportKey('jwk', privKey);
-                    const { d, ...publicJwk } = jwk;
+                    const { d: _d, ...publicJwk } = jwk;
                     const pubKey = await window.crypto.subtle.importKey('jwk', publicJwk, { name: 'Ed25519' }, true, []);
                     const spki = await window.crypto.subtle.exportKey('spki', pubKey);
 

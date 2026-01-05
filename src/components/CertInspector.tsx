@@ -50,7 +50,7 @@ export default function CertInspector() {
                 if (seq.type !== forge.asn1.Type.SEQUENCE) continue;
                 const oid = forge.asn1.derToOid(seq.value[0].value);
                 const valueNode = seq.value[1];
-                let value = valueNode.value;
+                const value = valueNode.value;
                 // Handle different string types (UTF8, Printable, etc.) correctly if needed
                 const name = (forge.pki.oids as any)[oid] || oid;
                 attributes.push({ name, value, shortName: name });
@@ -128,7 +128,7 @@ export default function CertInspector() {
             try {
                 const publicKey = forge.pki.publicKeyFromAsn1(spki);
                 return { algo: 'RSA', size: (publicKey as any).n.bitLength() };
-            } catch (e) {
+            } catch (_e) {
                 return { algo: 'RSA (Parse Error)' };
             }
         } else if (algOid === '1.2.840.10045.2.1') {
@@ -171,7 +171,7 @@ export default function CertInspector() {
                 };
                 const signatureAlgo = oidMap[sigAlgOid] || (forge.pki.oids as any)[sigAlgOid] || sigAlgOid;
 
-                let extensions: { name: string; value: string; critical: boolean }[] = [];
+                const extensions: { name: string; value: string; critical: boolean }[] = [];
                 if (attributesNode && attributesNode.value) {
                     for (let i = 0; i < attributesNode.value.length; i++) {
                         const attr = attributesNode.value[i];
@@ -224,7 +224,7 @@ export default function CertInspector() {
                 };
                 const signatureAlgo = oidMap[sigAlgOid] || (forge.pki.oids as any)[sigAlgOid] || sigAlgOid;
 
-                let extensions: any[] = [];
+                const extensions: any[] = [];
                 for (let i = offset + 6; i < tbs.value.length; i++) {
                     const node = tbs.value[i];
                     if (node.tagClass === forge.asn1.Class.CONTEXT_SPECIFIC && node.type === 3) {
