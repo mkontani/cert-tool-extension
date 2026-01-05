@@ -7,17 +7,17 @@ ek3dw90QxMcaYregfRy76E7Av/WhRANCAATjhUmhCOo9SoyWrf98WQJ385TFrTmV
 NV5Vc09vb+TWlj5mjh6ys8KY/C52wvKSD3DBmhiRXWLetdGR7rR3Awvm
 -----END PRIVATE KEY-----`;
 
-function decodePem(pem: string) {
+function decodePem(pem: string): Uint8Array {
     const match = pem.match(/-----BEGIN [^-]+-----([\s\S]+?)-----END [^-]+-----/);
     const base64 = (match ? match[1] : pem).replace(/\s/g, '');
     const binary = atob(base64);
     const buffer = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
-    return buffer.buffer;
+    return buffer;
 }
 
-async function extractPublicKeyJwk(pkcs8Buffer: ArrayBuffer, alg: any): Promise<CryptoKey> {
-    const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
+async function extractPublicKeyJwk(pkcs8Buffer: Uint8Array, alg: any): Promise<CryptoKey> {
+    const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer as any, alg, true, ['sign']);
     const jwk = await crypto.subtle.exportKey('jwk', privKey);
 
     // Create public JWK (remove private part 'd' and add key_ops)
@@ -51,7 +51,7 @@ describe('ECDSA Crypto Fix', () => {
     it('should sign data with ECDSA and match standard DER format', async () => {
         const pkcs8Buffer = decodePem(P256_PRIVATE_KEY_PEM);
         const alg = { name: 'ECDSA', namedCurve: 'P-256' };
-        const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
+        const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer as any, alg, true, ['sign']);
 
         const data = new TextEncoder().encode('test data');
         const rawSig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privKey, data);
@@ -63,7 +63,7 @@ describe('ECDSA Crypto Fix', () => {
         try {
             const keyPair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign']);
             const pkcs8 = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
-            const pubKey = await extractPublicKeyJwk(pkcs8, { name: 'Ed25519' });
+            const pubKey = await extractPublicKeyJwk(new Uint8Array(pkcs8), { name: 'Ed25519' });
             expect(pubKey.type).toBe('public');
             const spki = await crypto.subtle.exportKey('spki', pubKey);
             expect(spki.byteLength).toBeGreaterThan(0);

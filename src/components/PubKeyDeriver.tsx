@@ -10,13 +10,13 @@ export default function PubKeyDeriver() {
     const [copyStatus, setCopyStatus] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const decodePem = (pem: string) => {
+    const decodePem = (pem: string): Uint8Array => {
         const match = pem.match(/-----BEGIN [^-]+-----([\s\S]+?)-----END [^-]+-----/);
         const base64 = (match ? match[1] : pem).replace(/\s/g, '');
         const binary = window.atob(base64);
         const buffer = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
-        return buffer.buffer;
+        return buffer;
     };
 
     const formatPem = (label: string, base64: string) => {
@@ -39,8 +39,7 @@ export default function PubKeyDeriver() {
             console.log('--- Starting Public Key Derivation ---');
 
             if (inputPem.includes('PRIVATE KEY')) {
-                const pkcs8Buffer = decodePem(inputPem);
-                const pkcs8Uint8 = new Uint8Array(pkcs8Buffer);
+                const pkcs8Uint8 = decodePem(inputPem);
 
                 // Surgical Detection via ASN.1 - Must use binary string for fromDer
                 const asn1 = forge.asn1.fromDer(forge.util.binary.raw.encode(pkcs8Uint8));
@@ -63,7 +62,7 @@ export default function PubKeyDeriver() {
                     if (!alg) throw new Error(`Unsupported EC Curve OID: ${curveOid}`);
 
                     // JWK Trick to bypass export restrictions
-                    const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
+                    const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Uint8 as any, alg, true, ['sign']);
                     const jwk = await window.crypto.subtle.exportKey('jwk', privKey);
                     const { d: _d, ...publicJwk } = jwk;
                     const pubKey = await window.crypto.subtle.importKey('jwk', publicJwk, alg, true, []);
@@ -77,7 +76,7 @@ export default function PubKeyDeriver() {
 
                 } else if (algOid === '1.3.101.112') {
                     // Ed25519
-                    const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Buffer, { name: 'Ed25519' }, true, ['sign']);
+                    const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Uint8 as any, { name: 'Ed25519' }, true, ['sign']);
                     const jwk = await window.crypto.subtle.exportKey('jwk', privKey);
                     const { d: _d, ...publicJwk } = jwk;
                     const pubKey = await window.crypto.subtle.importKey('jwk', publicJwk, { name: 'Ed25519' }, true, []);
