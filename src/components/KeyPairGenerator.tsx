@@ -156,8 +156,9 @@ export default function KeyPairGenerator() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div>
-                    <label>Algorithm</label>
+                    <label htmlFor="algo-select">Algorithm</label>
                     <select
+                        id="algo-select"
                         value={algorithm}
                         onChange={(e) => setAlgorithm(e.target.value as Algorithm)}
                         disabled={isGenerating}
@@ -233,7 +234,7 @@ export default function KeyPairGenerator() {
             )}
 
             {privateKey && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }} data-testid="keypair-results">
                     {/* Private Key Section */}
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
