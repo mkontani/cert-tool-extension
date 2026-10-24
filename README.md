@@ -34,6 +34,14 @@ View detailed information about certificates and signing requests.
 - **Comprehensive View**: Shows Serial Number, Subject, Issuer, Validity, and Public Key details.
 - **Extension Decoding**: Human-readable decoding for SANs, Basic Constraints, Key Usage, and Extended Key Usage (EKU).
 
+### 5. Certificate Linter
+Check whether a server certificate is safe to deploy, similar to [zlint](https://github.com/zmap/zlint) but running entirely in the browser.
+- **30 checks**: Expiry, hostname coverage, SAN/EKU/Basic Constraints, DNS name syntax, key type and size, weak signatures, duplicate extensions, and the CA/Browser Forum TLS Baseline Requirements (validity limits, permitted algorithms, policy OIDs, revocation info, CT, and more).
+- **Two profiles**: *Public CA* applies the Baseline Requirements and browser root-program rules; *Private CA* applies only what browsers and operating systems enforce (e.g. Apple's 825-day limit). The profile is auto-detected from the certificate policies and can be overridden.
+- **Hostname check**: Optionally verify that a hostname, IP address, or URL is covered by the SAN (wildcards and IDNs supported).
+- **Cited sources**: Every finding links back to the BR section, RFC, or root-program policy it comes from.
+- **Out of scope**: Chain building, revocation status lookups, SCT signature verification, CSRs, and CA certificates.
+
 ## Installation
 
 1. Clone this repository.
@@ -46,8 +54,14 @@ View detailed information about certificates and signing requests.
 ## Technology Stack
 - **Framework**: Vite + React + TypeScript
 - **Crypto Library**: [node-forge](https://github.com/digitalbazaar/forge) & Web Crypto API
+- **ASN.1 Parsing (Linter)**: [@peculiar/asn1-x509](https://github.com/PeculiarVentures/asn1-schema) & [asn1js](https://github.com/PeculiarVentures/asn1.js)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Styling**: Vanilla CSS with Glassmorphism effects
+
+## Maintaining the Linter
+- `node scripts/update-tlds.mjs` refreshes the IANA TLD list used to detect internal names.
+- `scripts/gen-lint-fixtures.sh` regenerates the test certificates (requires OpenSSL 3.4+).
+- Rules follow CA/Browser Forum TLS BR v2.3.1, Chrome Root Program Policy v1.8, and Mozilla Root Store Policy v3.1. Date-based rules (e.g. the validity limits that tighten in 2027 and 2029) are already encoded.
 
 ---
 Developed with focus on security, usability, and modern aesthetics.
