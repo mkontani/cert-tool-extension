@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Cert Tool",
     "version": "1.0.1",
-    "description": "A comprehensive tool for certificates: Key Pair Generation, CSR Generation, Public Key Derivation, and Inspection.",
+    "description": "A comprehensive tool for certificates: Key Pair Generation, CSR Generation, Public Key Derivation, Inspection, and Linting.",
     "action": {
         "default_popup": "index.html",
         "default_title": "Cert Tool",

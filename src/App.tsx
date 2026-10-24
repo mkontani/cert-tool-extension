@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Shield, Key, FileSignature, Search } from 'lucide-react';
+import { Shield, Key, FileSignature, Search, ShieldCheck } from 'lucide-react';
 import KeyPairGenerator from './components/KeyPairGenerator';
 import CSRGenerator from './components/CSRGenerator';
 import PubKeyDeriver from './components/PubKeyDeriver';
 import CertInspector from './components/CertInspector';
+import CertLinter from './components/CertLinter';
 
-type Tab = 'keygen' | 'csr' | 'pubkey' | 'inspector';
+type Tab = 'keygen' | 'csr' | 'pubkey' | 'inspector' | 'lint';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('keygen');
@@ -28,7 +29,7 @@ function App() {
           className={`tab ${activeTab === 'keygen' ? 'active' : ''}`}
           onClick={() => setActiveTab('keygen')}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Key size={16} />
             <span>Gen KeyPair</span>
           </div>
@@ -37,7 +38,7 @@ function App() {
           className={`tab ${activeTab === 'csr' ? 'active' : ''}`}
           onClick={() => setActiveTab('csr')}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <FileSignature size={16} />
             <span>Gen CSR</span>
           </div>
@@ -46,7 +47,7 @@ function App() {
           className={`tab ${activeTab === 'pubkey' ? 'active' : ''}`}
           onClick={() => setActiveTab('pubkey')}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Key size={16} />
             <span>Derive PubKey</span>
           </div>
@@ -55,9 +56,18 @@ function App() {
           className={`tab ${activeTab === 'inspector' ? 'active' : ''}`}
           onClick={() => setActiveTab('inspector')}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Search size={16} />
             <span>Inspector</span>
+          </div>
+        </button>
+        <button
+          className={`tab ${activeTab === 'lint' ? 'active' : ''}`}
+          onClick={() => setActiveTab('lint')}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <ShieldCheck size={16} />
+            <span>Lint</span>
           </div>
         </button>
       </nav>
@@ -67,6 +77,7 @@ function App() {
         {activeTab === 'csr' && <CSRGenerator />}
         {activeTab === 'pubkey' && <PubKeyDeriver />}
         {activeTab === 'inspector' && <CertInspector />}
+        {activeTab === 'lint' && <CertLinter />}
       </main>
     </div>
   );
