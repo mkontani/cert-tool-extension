@@ -2,6 +2,12 @@
 
 All notable changes to Cert Tool are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- The CSR and public key tabs no longer print debug messages to the browser console.
+- The popup no longer scrolls sideways when long results add a vertical scrollbar (on systems with always-visible scrollbars, such as Windows).
+
 ## [1.1.0] - 2026-10-25
 
 ### Added
@@ -42,6 +48,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 ### Added
 - Initial release: key pair generation (RSA, ECDSA, Ed25519), CSR generation, public key derivation, and a certificate/CSR inspector.
 
+[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.1.0...HEAD
 [1.1.0]: https://github.com/mkontani/cert-tool-extension/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/mkontani/cert-tool-extension/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/mkontani/cert-tool-extension/releases/tag/1.0.0

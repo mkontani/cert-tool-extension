@@ -33,6 +33,8 @@ export default defineConfig([
         },
       ],
       'no-control-regex': 'off',
+      // Debug output must not ship in the popup; errors and warnings are still reported.
+      'no-console': ['error', { allow: ['warn', 'error'] }],
     },
   },
 ])
