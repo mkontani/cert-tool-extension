@@ -31,8 +31,19 @@ Extract the public key component from various sources.
 ### 4. Certificate/CSR Inspector
 View detailed information about certificates and signing requests.
 ![Inspector](screenshots/inspector_screenshot_web.jpg)
-- **Comprehensive View**: Shows Serial Number, Subject, Issuer, Validity, and Public Key details.
-- **Extension Decoding**: Human-readable decoding for SANs, Basic Constraints, Key Usage, and Extended Key Usage (EKU).
+- **Comprehensive View**: Shows Serial Number, Subject, Issuer, Validity, Public Key (RSA, RSA-PSS, ECDSA curves, Ed25519, Ed448, ML-DSA), and Signature Algorithm. Non-ASCII names are decoded correctly.
+- **Extension Decoding**: Human-readable decoding for SANs, Key/Authority Key Identifiers, Key Usage, Extended Key Usage (EKU), Basic Constraints, CRL Distribution Points, Authority Information Access, Certificate Policies, embedded SCTs, Name Constraints, and OCSP Must-Staple. Lists such as SANs and CRL URIs are shown one entry per row.
+- **Full Chains**: Paste a whole chain (e.g. `fullchain.pem`) and switch between the leaf and intermediates.
+
+### 5. Certificate Linter
+Check whether a server certificate is safe to deploy, similar to [zlint](https://github.com/zmap/zlint) but running entirely in the browser.
+- **30 checks**: Expiry, hostname coverage, SAN/EKU/Basic Constraints, DNS name syntax, key type and size, weak signatures, duplicate extensions, and the CA/Browser Forum TLS Baseline Requirements (validity limits, permitted algorithms, policy OIDs, revocation info, CT, and more).
+- **Two profiles**: *Public CA* applies the Baseline Requirements and browser root-program rules; *Private CA* applies only what browsers and operating systems enforce (e.g. Apple's 825-day limit). The profile is auto-detected from the certificate policies and can be overridden.
+- **Hostname check**: Optionally verify that a hostname, IP address, or URL is covered by the SAN (wildcards and IDNs supported).
+- **Cited sources**: Every finding links back to the BR section, RFC, or root-program policy it comes from.
+- **Out of scope**: Chain building, revocation status lookups, SCT signature verification, CSRs, and CA certificates.
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Installation
 
@@ -46,8 +57,14 @@ View detailed information about certificates and signing requests.
 ## Technology Stack
 - **Framework**: Vite + React + TypeScript
 - **Crypto Library**: [node-forge](https://github.com/digitalbazaar/forge) & Web Crypto API
+- **ASN.1 Parsing (Linter & Inspector)**: [@peculiar/asn1-x509](https://github.com/PeculiarVentures/asn1-schema) & [asn1js](https://github.com/PeculiarVentures/asn1.js)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Styling**: Vanilla CSS with Glassmorphism effects
+
+## Maintaining the Linter
+- `node scripts/update-tlds.mjs` refreshes the IANA TLD list used to detect internal names.
+- `scripts/gen-lint-fixtures.sh` regenerates the test certificates (requires OpenSSL 3.4+).
+- Rules follow CA/Browser Forum TLS BR v2.3.1, Chrome Root Program Policy v1.8, and Mozilla Root Store Policy v3.1. Date-based rules (e.g. the validity limits that tighten in 2027 and 2029) are already encoded.
 
 ---
 Developed with focus on security, usability, and modern aesthetics.
