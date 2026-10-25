@@ -3,6 +3,7 @@ import forge from 'node-forge';
 import { Search, AlertCircle } from 'lucide-react';
 import { describeExtension } from '../inspector/extensions';
 import { describeName } from '../inspector/format';
+import { findPemBlock } from '../inspector/pem';
 import type { ExtensionInfo } from '../inspector/types';
 import EntryList from './EntryList';
 
@@ -22,6 +23,8 @@ interface ParsedInfo {
     pubKeySize?: number;
     extensions?: ExtensionInfo[];
     signatureAlgo?: string;
+    /** Shown above the details, e.g. when only the first certificate of a chain is inspected. */
+    notice?: string;
 }
 
 export default function CertInspector() {
@@ -59,12 +62,14 @@ export default function CertInspector() {
         if (!inputPem.trim()) return;
 
         try {
-            const b64 = inputPem.replace(/-----BEGIN [^-]+-----|-----END [^-]+-----|\s/g, '');
-            const binary = window.atob(b64);
-            const der = forge.util.binary.raw.encode(new Uint8Array(binary.length).map((_, i) => binary.charCodeAt(i)));
-            const asn1 = forge.asn1.fromDer(der);
+            const block = findPemBlock(inputPem);
+            if (!block) throw new Error('Unsupported format. Please feed a CERTIFICATE or CERTIFICATE REQUEST (CSR).');
+            const asn1 = forge.asn1.fromDer(forge.util.binary.raw.encode(block.der));
+            const notice = block.count > 1
+                ? `Showing the first of ${block.count} ${block.kind === 'csr' ? 'CSRs' : 'certificates'}.`
+                : undefined;
 
-            if (inputPem.includes('CERTIFICATE REQUEST')) {
+            if (block.kind === 'csr') {
                 const cri = (asn1 as any).value[0];
                 const subject = describeName(derBytes(cri.value[1]));
                 const spki = cri.value[2];
@@ -100,10 +105,11 @@ export default function CertInspector() {
                     pubKeyAlgo: pubKeyInfo.algo,
                     pubKeySize: pubKeyInfo.size,
                     signatureAlgo,
-                    extensions
+                    extensions,
+                    notice
                 });
 
-            } else if (inputPem.includes('CERTIFICATE')) {
+            } else {
                 const tbs = (asn1 as any).value[0];
                 let offset = 0;
                 if (tbs.value[0].tagClass === forge.asn1.Class.CONTEXT_SPECIFIC && tbs.value[0].type === 0) {
@@ -154,10 +160,9 @@ export default function CertInspector() {
                     pubKeyAlgo: pubKeyInfo.algo,
                     pubKeySize: pubKeyInfo.size,
                     signatureAlgo,
-                    extensions
+                    extensions,
+                    notice
                 });
-            } else {
-                throw new Error('Unsupported format. Please feed a CERTIFICATE or CERTIFICATE REQUEST (CSR).');
             }
         } catch (e: any) {
             console.error('Inspector parse error:', e);
@@ -193,6 +198,7 @@ export default function CertInspector() {
             {info && (
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--surface-border)' }} data-testid="inspector-results">
                     <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>{info.type}</h3>
+                    {info.notice && <p data-testid="inspector-notice" style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '-0.5rem 0 1rem' }}>{info.notice}</p>}
                     <div style={{ display: 'grid', gridTemplateColumns: 'min-content 1fr', gap: '0.75rem 1.5rem', fontSize: '0.9rem' }}>
                         {info.serial && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Serial Number:</strong><code style={{ wordBreak: 'break-all' }}>{info.serial}</code></>}
                         <strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Subject:</strong><div style={{ wordBreak: 'break-word', color: '#e2e8f0' }}>{info.subject}</div>

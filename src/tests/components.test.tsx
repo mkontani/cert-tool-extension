@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import KeyPairGenerator from '../components/KeyPairGenerator';
 import CertInspector from '../components/CertInspector';
 import PubKeyDeriver from '../components/PubKeyDeriver';
-import { ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
+import { CA_CERT, ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
 import { EMPTY_SAN_CERT, KITCHEN_SINK_CERT, MIXED_SAN_CERT, SAN_CSR } from './inspectorFixtures';
 
 // Mock clipboard API
@@ -94,6 +94,14 @@ describe('CertInspector Component', () => {
         const expected = 'countryName=JP, organizationName=株式会社テスト, commonName=ks.example.jp';
         expect(fieldValue('Subject:')).toBe(expected);
         expect(fieldValue('Issuer:')).toBe(expected);
+    });
+
+    it('inspects the first certificate of a pasted chain', () => {
+        render(<CertInspector />);
+        fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: `${PRIVATE_EC_LEAF}\n${CA_CERT}\n` } });
+        fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
+        expect(fieldValue('Subject:')).toBe('organizationName=Example Corp, commonName=app.corp');
+        expect(screen.getByTestId('inspector-notice')).toHaveTextContent('Showing the first of 2 certificates.');
     });
 
     describe('subjectAltName', () => {
