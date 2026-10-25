@@ -36,8 +36,6 @@ export default function PubKeyDeriver() {
         }
 
         try {
-            console.log('--- Starting Public Key Derivation ---');
-
             if (inputPem.includes('PRIVATE KEY')) {
                 const pkcs8Uint8 = decodePem(inputPem);
 
@@ -47,12 +45,10 @@ export default function PubKeyDeriver() {
 
                 const algIdSeq = (asn1 as any).value[1];
                 const algOid = forge.asn1.derToOid(algIdSeq.value[0].value);
-                console.log('Detected Key OID:', algOid);
 
                 if (algOid === '1.2.840.10045.2.1') {
                     // EC Key
                     const curveOid = forge.asn1.derToOid(algIdSeq.value[1].value);
-                    console.log('Detected Curve OID:', curveOid);
 
                     let alg: any = null;
                     if (curveOid === '1.2.840.10045.3.1.7') alg = { name: 'ECDSA', namedCurve: 'P-256' };

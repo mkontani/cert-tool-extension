@@ -73,7 +73,6 @@ export default function CSRGenerator() {
         }
 
         try {
-            console.log('--- Starting CSR Generation ---');
             const pkcs8Buffer = decodePem(privateKey);
             const pkcs8Uint8 = new Uint8Array(pkcs8Buffer);
 
@@ -83,7 +82,6 @@ export default function CSRGenerator() {
 
             const algIdSeq = (asn1 as any).value[1];
             const algOid = forge.asn1.derToOid(algIdSeq.value[0].value);
-            console.log('Detected Key OID:', algOid);
 
             if (algOid === '1.2.840.10045.2.1') {
                 // ECDSA Flow
