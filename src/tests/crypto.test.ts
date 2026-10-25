@@ -59,16 +59,14 @@ describe('ECDSA Crypto Fix', () => {
         expect(rawSig.byteLength).toBe(64); // P-256 raw sig is 64 bytes
     });
 
-    it('should support Ed25519 via JWK extraction if supported by environment', async () => {
-        try {
-            const keyPair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign']);
-            const pkcs8 = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
-            const pubKey = await extractPublicKeyJwk(new Uint8Array(pkcs8), { name: 'Ed25519' });
-            expect(pubKey.type).toBe('public');
-            const spki = await crypto.subtle.exportKey('spki', pubKey);
-            expect(spki.byteLength).toBeGreaterThan(0);
-        } catch (_e) {
-            console.log('Ed25519 not supported in this environment, skipping.');
-        }
+    it('should support Ed25519 via JWK extraction if supported by environment', async ({ skip }) => {
+        // Only key generation may be unsupported; assertion failures must still fail the test.
+        const keyPair = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign']).catch(() => null);
+        if (!keyPair) return skip('Ed25519 is not supported in this environment');
+        const pkcs8 = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+        const pubKey = await extractPublicKeyJwk(new Uint8Array(pkcs8), { name: 'Ed25519' });
+        expect(pubKey.type).toBe('public');
+        const spki = await crypto.subtle.exportKey('spki', pubKey);
+        expect(spki.byteLength).toBeGreaterThan(0);
     });
 });
