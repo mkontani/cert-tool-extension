@@ -41,3 +41,61 @@ UThNMGhRZeuHE2n/YELpW3IwDwYDVR0TAQH/BAUwAwEB/zAJBgNVHREEAjAAMAoG
 CCqGSM49BAMCA0gAMEUCICqZiyEcCrm8invwA2yQoeDRoQSsUO31P36xlGVXjzNX
 AiEA5n/CYh0of9GH9prkACnZfDidSBPP2V/JaJ8eOSTm0uY=
 -----END CERTIFICATE-----`;
+
+/**
+ * Self-signed secp256k1 certificate exercising most extensions, with a UTF-8 subject.
+ *   openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:secp256k1 -nodes -keyout /dev/null -config ks.cnf -days 30
+ * ks.cnf:
+ *   [req]
+ *   distinguished_name = dn
+ *   string_mask = utf8only
+ *   utf8 = yes
+ *   prompt = no
+ *   x509_extensions = v3
+ *   [dn]
+ *   C = JP
+ *   O = 株式会社テスト
+ *   CN = ks.example.jp
+ *   [v3]
+ *   subjectAltName = DNS:ks.example.jp,IP:2001:db8:0:1:0:0:0:1,IP:2001:db8:0:0:1:0:0:1
+ *   extendedKeyUsage = serverAuth,1.3.6.1.4.1.311.10.3.4
+ *   tlsfeature = status_request
+ *   certificatePolicies = 2.23.140.1.2.2,@pol
+ *   authorityKeyIdentifier = keyid,issuer:always
+ *   subjectKeyIdentifier = hash
+ *   nameConstraints = permitted;DNS:.example.jp,excluded;IP:10.0.0.0/255.0.0.0
+ *   crlDistributionPoints = URI:http://crl.example.jp/a.crl,URI:ldap://ldap.example.jp/cn=CA
+ *   authorityInfoAccess = OCSP;URI:http://ocsp.example.jp,caIssuers;URI:http://ca.example.jp/ca.crt
+ *   policyConstraints = requireExplicitPolicy:0
+ *   1.2.3.4.5 = ASN1:UTF8String:hello
+ *   [pol]
+ *   policyIdentifier = 1.3.6.1.4.1.99999.1
+ *   CPS.1 = https://example.jp/cps
+ *   userNotice.1 = @notice
+ *   [notice]
+ *   explicitText = "Test notice"
+ */
+export const KITCHEN_SINK_CERT = `-----BEGIN CERTIFICATE-----
+MIID/zCCA6SgAwIBAgIUBC2lzQ2jrph0q+RqpOJXlwyqR6kwCgYIKoZIzj0EAwIw
+RTELMAkGA1UEBhMCSlAxHjAcBgNVBAoMFeagquW8j+S8muekvuODhuOCueODiDEW
+MBQGA1UEAwwNa3MuZXhhbXBsZS5qcDAeFw0yNjEwMjUwNDMxMjVaFw0yNjExMjQw
+NDMxMjVaMEUxCzAJBgNVBAYTAkpQMR4wHAYDVQQKDBXmoKrlvI/kvJrnpL7jg4bj
+grnjg4gxFjAUBgNVBAMMDWtzLmV4YW1wbGUuanAwVjAQBgcqhkjOPQIBBgUrgQQA
+CgNCAARIpxiPTUiKt4X65JFB73AN+mr2bb1LIaclkkjloOQn5xgZ1566lNb15h5j
+tadSR25fNIpc5apUMRAK40lEzac+o4ICczCCAm8wPAYDVR0RBDUwM4INa3MuZXhh
+bXBsZS5qcIcQIAENuAAAAAEAAAAAAAAAAYcQIAENuAAAAAAAAQAAAAAAATAfBgNV
+HSUEGDAWBggrBgEFBQcDAQYKKwYBBAGCNwoDBDARBggrBgEFBQcBGAQFMAMCAQUw
+YQYDVR0gBFowWDAIBgZngQwBAgIwTAYJKwYBBAGGjR8BMD8wIgYIKwYBBQUHAgEW
+Fmh0dHBzOi8vZXhhbXBsZS5qcC9jcHMwGQYIKwYBBQUHAgIwDRoLVGVzdCBub3Rp
+Y2UwHQYDVR0OBBYEFHrtHdqqS37VtoQ9ADnZcjjjgyFYMIGABgNVHSMEeTB3gBR6
+7R3aqkt+1baEPQA52XI444MhWKFJpEcwRTELMAkGA1UEBhMCSlAxHjAcBgNVBAoM
+FeagquW8j+S8muekvuODhuOCueODiDEWMBQGA1UEAwwNa3MuZXhhbXBsZS5qcIIU
+BC2lzQ2jrph0q+RqpOJXlwyqR6kwKAYDVR0eBCEwH6APMA2CCy5leGFtcGxlLmpw
+oQwwCocICgAAAP8AAAAwUAYDVR0fBEkwRzAhoB+gHYYbaHR0cDovL2NybC5leGFt
+cGxlLmpwL2EuY3JsMCKgIKAehhxsZGFwOi8vbGRhcC5leGFtcGxlLmpwL2NuPUNB
+MFsGCCsGAQUFBwEBBE8wTTAiBggrBgEFBQcwAYYWaHR0cDovL29jc3AuZXhhbXBs
+ZS5qcDAnBggrBgEFBQcwAoYbaHR0cDovL2NhLmV4YW1wbGUuanAvY2EuY3J0MAwG
+A1UdJAQFMAOAAQAwDwYEKgMEBQQHDAVoZWxsbzAKBggqhkjOPQQDAgNJADBGAiEA
+/7pGkSQZ2g1v4eCjY4uHZmh7Wp5mNbHRRlijtHay6xcCIQD06VUMEsArM1RFg1FY
+cJlLmZ4gcdUHHvG1PPXSQtHwWw==
+-----END CERTIFICATE-----`;

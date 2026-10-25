@@ -132,16 +132,13 @@ describe('CertInspector Component', () => {
 
         it('labels email, URI, registeredID and otherName entries', () => {
             inspect(MIXED_SAN_CERT);
-            const rows = sanRows();
-            expect(rows.slice(0, 4)).toEqual([
+            expect(sanRows()).toEqual([
                 ['DNS', 'mixed.example'],
                 ['Email', 'admin@example.com'],
                 ['URI', 'https://example.com/id'],
                 ['RID', '1.2.3.4'],
+                ['otherName', 'UPN: user@example.com'],
             ]);
-            // forge leaves otherName undecoded; its DER starts with the UPN type OID 1.3.6.1.4.1.311.20.2.3
-            expect(rows[4][0]).toBe('otherName');
-            expect(rows[4][1]).toMatch(/^\(Hex\) 06:0A:2B:06:01:04:01:82:37:14:02:03:/);
         });
 
         it('lists the names requested in a CSR', () => {
