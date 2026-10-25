@@ -32,7 +32,7 @@ export default function EntryList({ label, entries }: EntryListProps) {
                     >
                         {entry.type}
                     </span>
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all' }}>{entry.value}</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', overflowWrap: 'anywhere' }}>{entry.value}</span>
                 </li>
             ))}
         </ul>
