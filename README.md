@@ -1,6 +1,6 @@
 # Cert Tool Chrome Extension
 
-![Cert Tool Icon](public/icons/icon128.png)
+![Cert Tool](screenshots/store/marquee-promo-1400x560.png)
 
 A powerful and elegant Chrome extension for handling X.509 certificates and cryptographic keys. Designed with a premium dark-mode interface and glassmorphism aesthetics.
 
@@ -10,33 +10,34 @@ A powerful and elegant Chrome extension for handling X.509 certificates and cryp
 
 ### 1. Key Pair Generation
 Generate cryptographic key pairs instantly using the Web Crypto API.
-![Key Pair Generation](screenshots/gen_keypair_screenshot_web.jpg)
+![Key Pair Generation](screenshots/store/3-keypair.png)
 - **Algorithms**: RSA (2048, 4096 bits), ECDSA (P-256, P-384, P-521), and Ed25519.
 - **Standard Formats**: Private keys are exported in **PKCS#8** and public keys in **SPKI**.
 - **Save As**: Easily download keys with a standard OS save dialog.
 
 ### 2. CSR Generation
 Create Certificate Signing Requests (CSR) with a user-friendly form.
-![CSR Generation](screenshots/gen_csr_screenshot_web.jpg)
+![CSR Generation](screenshots/store/4-csr.png)
 - **Customizable DN**: Set Common Name, Organization, Country, and more.
 - **SAN Support**: Add multiple Subject Alternative Names (DNS, IP, Email, URI).
 - **Flexible Signing**: Sign the request using your own private key.
 
 ### 3. Public Key Derivation
 Extract the public key component from various sources.
-![Public Key Derivation](screenshots/derive_pubkey_screenshot_web.jpg)
+![Public Key Derivation](screenshots/store/5-derive.png)
 - **Input Types**: Supports Private Keys (PKCS#8/PKCS#1), Certificates, or CSRs.
 - **Auto-Detection**: Automatically identifies the input type and algorithm.
 
 ### 4. Certificate/CSR Inspector
 View detailed information about certificates and signing requests.
-![Inspector](screenshots/inspector_screenshot_web.jpg)
+![Inspector](screenshots/store/2-inspector.png)
 - **Comprehensive View**: Shows Serial Number, Subject, Issuer, Validity, Public Key (RSA, RSA-PSS, ECDSA curves, Ed25519, Ed448, ML-DSA), and Signature Algorithm. Non-ASCII names are decoded correctly.
 - **Extension Decoding**: Human-readable decoding for SANs, Key/Authority Key Identifiers, Key Usage, Extended Key Usage (EKU), Basic Constraints, CRL Distribution Points, Authority Information Access, Certificate Policies, embedded SCTs, Name Constraints, and OCSP Must-Staple. Lists such as SANs and CRL URIs are shown one entry per row.
 - **Full Chains**: Paste a whole chain (e.g. `fullchain.pem`) and switch between the leaf and intermediates.
 
 ### 5. Certificate Linter
 Check whether a server certificate is safe to deploy, similar to [zlint](https://github.com/zmap/zlint) but running entirely in the browser.
+![Certificate Linter](screenshots/store/1-linter.png)
 - **30 checks**: Expiry, hostname coverage, SAN/EKU/Basic Constraints, DNS name syntax, key type and size, weak signatures, duplicate extensions, and the CA/Browser Forum TLS Baseline Requirements (validity limits, permitted algorithms, policy OIDs, revocation info, CT, and more).
 - **Two profiles**: *Public CA* applies the Baseline Requirements and browser root-program rules; *Private CA* applies only what browsers and operating systems enforce (e.g. Apple's 825-day limit). The profile is auto-detected from the certificate policies and can be overridden.
 - **Hostname check**: Optionally verify that a hostname, IP address, or URL is covered by the SAN (wildcards and IDNs supported).
