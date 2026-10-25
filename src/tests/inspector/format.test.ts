@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { AsnConvert } from '@peculiar/asn1-schema';
 import { AttributeTypeAndValue, AttributeValue, Name, RelativeDistinguishedName } from '@peculiar/asn1-x509';
-import { describeName, displayText } from '../../inspector/format';
+import { commonNameOf, describeName, displayText } from '../../inspector/format';
 
 const nameWith = (type: string, utf8String: string) =>
     new Uint8Array(AsnConvert.serialize(new Name([
@@ -32,5 +32,19 @@ describe('describeName', () => {
         { oid: '2.5.4.46', label: 'dnQualifier' },
     ])('names the $label attribute', ({ oid, label }) => {
         expect(describeName(nameWith(oid, 'x'))).toBe(`${label}=x`);
+    });
+});
+
+describe('commonNameOf', () => {
+    it('returns the most specific common name', () => {
+        const name = new Uint8Array(AsnConvert.serialize(new Name([
+            new RelativeDistinguishedName([new AttributeTypeAndValue({ type: '2.5.4.3', value: new AttributeValue({ utf8String: 'outer' }) })]),
+            new RelativeDistinguishedName([new AttributeTypeAndValue({ type: '2.5.4.3', value: new AttributeValue({ utf8String: 'inner' }) })]),
+        ])));
+        expect(commonNameOf(name)).toBe('inner');
+    });
+
+    it('treats an empty common name as missing', () => {
+        expect(commonNameOf(nameWith('2.5.4.3', ''))).toBeUndefined();
     });
 });

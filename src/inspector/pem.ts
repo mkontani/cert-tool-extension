@@ -1,11 +1,19 @@
 export type PemKind = 'certificate' | 'csr';
 
-export interface PemBlock {
-    readonly kind: PemKind;
-    readonly der: Uint8Array;
-    /** How many blocks of the same kind the input holds, e.g. 3 for a full chain. */
-    readonly count: number;
+/** One certificate or CSR block: its DER, or why it could not be read. */
+export type PemBlock =
+    | { readonly kind: PemKind; readonly der: Uint8Array }
+    | { readonly kind: PemKind; readonly error: string };
+
+export interface PemScan {
+    /** Certificate and CSR blocks in input order, e.g. the leaf and intermediates of a full chain. */
+    readonly blocks: readonly PemBlock[];
+    /** Set when the input held more than MAX_PEM_BLOCKS blocks and the rest were not read. */
+    readonly truncated: boolean;
 }
+
+/** Far more than any real chain, while keeping a hostile paste from producing thousands of entries. */
+export const MAX_PEM_BLOCKS = 100;
 
 const LABELS: Readonly<Record<string, PemKind>> = {
     'CERTIFICATE': 'certificate',
@@ -20,37 +28,47 @@ const MAX_LABEL_LENGTH = 64;
 
 const kindOf = (label: string): PemKind | undefined => (Object.hasOwn(LABELS, label) ? LABELS[label] : undefined);
 
-/** Occurrences of every BEGIN line of this kind; one split per label keeps this linear. */
-const countBlocks = (text: string, kind: PemKind) =>
-    Object.keys(LABELS)
-        .filter(label => LABELS[label] === kind)
-        .reduce((count, label) => count + text.split(`${BEGIN}${label}${DASHES}`).length - 1, 0);
+/** "The CERTIFICATE block" for the first block, "The CERTIFICATE block #2" after that. */
+const blockName = (label: string, index: number) => `The ${label} block${index === 0 ? '' : ` #${index + 1}`}`;
 
-function decodeBase64(body: string, label: string): Uint8Array {
+function decodeBlock(kind: PemKind, body: string, name: string): PemBlock {
     try {
-        return Uint8Array.from(atob(body.replace(/\s/g, '')), c => c.charCodeAt(0));
+        return { kind, der: Uint8Array.from(atob(body.replace(/\s/g, '')), c => c.charCodeAt(0)) };
     } catch {
-        throw new Error(`The ${label} block is not valid base64.`);
+        return { kind, error: `${name} is not valid base64.` };
     }
 }
 
 /**
- * Finds the first certificate or CSR in pasted text, skipping keys and other PEM blocks.
- * Uses indexOf rather than a regex so that hostile input cannot make the scan quadratic.
+ * Finds the certificates and CSRs in pasted text, skipping keys and other PEM blocks.
+ * Uses indexOf rather than a regex, and never rescans text, so hostile input cannot make the scan quadratic.
  */
-export function findPemBlock(text: string): PemBlock | null {
-    for (let begin = text.indexOf(BEGIN); begin !== -1; begin = text.indexOf(BEGIN, begin + BEGIN.length)) {
+export function findPemBlocks(text: string): PemScan {
+    const blocks: PemBlock[] = [];
+    for (let pos = 0; ;) {
+        const begin = text.indexOf(BEGIN, pos);
+        if (begin === -1) break;
         const labelStart = begin + BEGIN.length;
         const labelEnd = text.indexOf(DASHES, labelStart);
-        if (labelEnd === -1) return null;
+        if (labelEnd === -1) break;
+        pos = labelEnd;
         if (labelEnd - labelStart > MAX_LABEL_LENGTH) continue;
         const label = text.slice(labelStart, labelEnd);
         const kind = kindOf(label);
         if (!kind) continue;
+        if (blocks.length === MAX_PEM_BLOCKS) return { blocks, truncated: true };
+
+        const name = blockName(label, blocks.length);
         const bodyStart = labelEnd + DASHES.length;
-        const end = text.indexOf(`-----END ${label}${DASHES}`, bodyStart);
-        if (end === -1) throw new Error(`The ${label} block has no matching END line.`);
-        return { kind, der: decodeBase64(text.slice(bodyStart, end), label), count: countBlocks(text, kind) };
+        const endLine = `-----END ${label}${DASHES}`;
+        const end = text.indexOf(endLine, bodyStart);
+        if (end === -1) {
+            // A truncated paste: keep what came before it.
+            blocks.push({ kind, error: `${name} has no matching END line.` });
+            break;
+        }
+        blocks.push(decodeBlock(kind, text.slice(bodyStart, end), name));
+        pos = end + endLine.length;
     }
-    return null;
+    return { blocks, truncated: false };
 }

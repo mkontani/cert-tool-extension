@@ -12,3 +12,18 @@ export interface ExtensionInfo {
     /** Set for list-valued extensions so each item can be shown on its own row. */
     readonly entries?: readonly DisplayEntry[];
 }
+
+/** What the Inspector shows for one certificate or CSR. */
+export interface InspectionResult {
+    readonly type: string;
+    /** Short name for choosing between several pasted certificates: the subject's common name when there is one. */
+    readonly label: string;
+    readonly subject: string;
+    readonly issuer?: string;
+    readonly serial?: string;
+    readonly notBefore?: string;
+    readonly notAfter?: string;
+    readonly pubKeyAlgo: string;
+    readonly signatureAlgo: string;
+    readonly extensions: readonly ExtensionInfo[];
+}

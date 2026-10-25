@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import KeyPairGenerator from '../components/KeyPairGenerator';
 import CertInspector from '../components/CertInspector';
 import PubKeyDeriver from '../components/PubKeyDeriver';
+import { MAX_PEM_BLOCKS } from '../inspector/pem';
 import { CA_CERT, ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
 import { EMPTY_SAN_CERT, KITCHEN_SINK_CERT, MIXED_SAN_CERT, RSA_PSS_CERT, SAN_CSR } from './inspectorFixtures';
 
@@ -104,12 +105,71 @@ describe('CertInspector Component', () => {
         expect(fieldValue('Signature:')).toBe('RSASSA-PSS');
     });
 
-    it('inspects the first certificate of a pasted chain', () => {
-        render(<CertInspector />);
-        fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: `${PRIVATE_EC_LEAF}\n${CA_CERT}\n` } });
-        fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
-        expect(fieldValue('Subject:')).toBe('organizationName=Example Corp, commonName=app.corp');
-        expect(screen.getByTestId('inspector-notice')).toHaveTextContent('Showing the first of 2 certificates.');
+    describe('pasted chains', () => {
+        const inspect = (text: string) => {
+            render(<CertInspector />);
+            fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: text } });
+            fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
+        };
+        const certificateButtons = () =>
+            within(screen.getByRole('group', { name: 'Certificates in the input' })).getAllByRole('button');
+        const buttonNames = () => certificateButtons().map(button => button.getAttribute('aria-label'));
+        const pressed = () => certificateButtons().map(button => button.getAttribute('aria-pressed'));
+
+        it('offers one button per certificate, named after its common name', () => {
+            inspect(`${PRIVATE_EC_LEAF}\n${CA_CERT}\n`);
+            expect(buttonNames()).toEqual(['1: app.corp', '2: Lint Test Root CA']);
+            expect(pressed()).toEqual(['true', 'false']);
+            expect(fieldValue('Subject:')).toBe('organizationName=Example Corp, commonName=app.corp');
+        });
+
+        it('switches to the selected certificate', () => {
+            inspect(`${PRIVATE_EC_LEAF}\n${CA_CERT}\n`);
+            fireEvent.click(screen.getByRole('button', { name: '2: Lint Test Root CA' }));
+            expect(fieldValue('Subject:')).toBe('countryName=JP, organizationName=Lint Test, commonName=Lint Test Root CA');
+            expect(pressed()).toEqual(['false', 'true']);
+        });
+
+        it('starts again from the first certificate when new input is parsed', () => {
+            inspect(`${PRIVATE_EC_LEAF}\n${CA_CERT}\n`);
+            fireEvent.click(screen.getByRole('button', { name: '2: Lint Test Root CA' }));
+            fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: `${CA_CERT}\n${PRIVATE_EC_LEAF}\n` } });
+            fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
+            expect(fieldValue('Subject:')).toBe('countryName=JP, organizationName=Lint Test, commonName=Lint Test Root CA');
+        });
+
+        it('keeps the readable certificates when one cannot be parsed', () => {
+            inspect(`${PRIVATE_EC_LEAF}\n-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n`);
+            expect(buttonNames()).toEqual(['1: app.corp', '2: (unreadable)']);
+            fireEvent.click(screen.getByRole('button', { name: '2: (unreadable)' }));
+            expect(screen.getByRole('alert')).toHaveTextContent(/^Failed to parse:/);
+            expect(screen.queryByTestId('inspector-results')).not.toBeInTheDocument();
+        });
+
+        it('keeps the certificates before a truncated one', () => {
+            inspect(`${PRIVATE_EC_LEAF}\n-----BEGIN CERTIFICATE-----\nMIIB`);
+            expect(buttonNames()).toEqual(['1: app.corp', '2: (unreadable)']);
+            fireEvent.click(screen.getByRole('button', { name: '2: (unreadable)' }));
+            expect(screen.getByRole('alert')).toHaveTextContent('Failed to parse: The CERTIFICATE block #2 has no matching END line.');
+        });
+
+        it('lists CSRs alongside certificates', () => {
+            inspect(`${CA_CERT}\n${SAN_CSR}\n`);
+            expect(buttonNames()).toEqual(['1: Lint Test Root CA', '2: csr.example (CSR)']);
+            fireEvent.click(screen.getByRole('button', { name: '2: csr.example (CSR)' }));
+            expect(screen.getByRole('heading', { name: 'Certificate Signing Request (CSR)' })).toBeInTheDocument();
+        });
+
+        it(`says when only the first ${MAX_PEM_BLOCKS} blocks are listed`, () => {
+            inspect(`${CA_CERT}\n`.repeat(MAX_PEM_BLOCKS + 1));
+            expect(certificateButtons()).toHaveLength(MAX_PEM_BLOCKS);
+            expect(screen.getByText(`Only the first ${MAX_PEM_BLOCKS} blocks are listed.`)).toBeInTheDocument();
+        });
+
+        it('shows no selector for a single certificate', () => {
+            inspect(PRIVATE_EC_LEAF);
+            expect(screen.queryByRole('group', { name: 'Certificates in the input' })).not.toBeInTheDocument();
+        });
     });
 
     describe('subjectAltName', () => {

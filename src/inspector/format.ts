@@ -76,6 +76,19 @@ export const formatRdn = (rdn: RelativeDistinguishedName): string =>
 
 export const formatName = (name: Name): string => name.map(formatRdn).join(', ');
 
+const OID_COMMON_NAME = '2.5.4.3';
+
+/** The last commonName of a DER-encoded Name (the most specific one), or undefined when there is none. */
+export function commonNameOf(der: Uint8Array): string | undefined {
+    try {
+        const values = AsnConvert.parse(der, Name).flatMap(rdn => rdn.filter(atv => atv.type === OID_COMMON_NAME));
+        const text = values.at(-1)?.value.toString();
+        return text ? displayText(text) : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /** Renders a DER-encoded Name (subject or issuer); one that cannot be decoded is shown as hex. */
 export function describeName(der: Uint8Array): string {
     try {
