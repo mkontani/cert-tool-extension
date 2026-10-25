@@ -1,6 +1,24 @@
 import { useState } from 'react';
 import forge from 'node-forge';
 import { Search, AlertCircle } from 'lucide-react';
+import AltNameList, { type AltNameEntry } from './AltNameList';
+
+const entryCountLabel = (count: number) => `${count} ${count === 1 ? 'entry' : 'entries'}`;
+
+/** GeneralName tags (RFC 5280 §4.2.1.6) → labels. */
+const ALT_NAME_TYPES: Readonly<Record<number, string>> = {
+    0: 'otherName', 1: 'Email', 2: 'DNS', 3: 'X400', 4: 'DirName', 5: 'EDIParty', 6: 'URI', 7: 'IP', 8: 'RID',
+};
+
+const hasBinaryResidue = (text: string) => /[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]/.test(text);
+
+interface ExtensionInfo {
+    name: string;
+    value: string;
+    critical: boolean;
+    /** Set for subjectAltName / issuerAltName so each name can be shown on its own row. */
+    entries?: AltNameEntry[];
+}
 
 interface ParsedInfo {
     type: string;
@@ -11,7 +29,7 @@ interface ParsedInfo {
     notAfter?: string;
     pubKeyAlgo?: string;
     pubKeySize?: number;
-    extensions?: { name: string; value: string; critical: boolean }[];
+    extensions?: ExtensionInfo[];
     signatureAlgo?: string;
 }
 
@@ -64,23 +82,33 @@ export default function CertInspector() {
         return hex.match(/.{2}/g)?.join(':').toUpperCase() || hex;
     };
 
-    const decodeExtension = (extNode: any) => {
+    // forge decodes string names, IP and registeredID; other GeneralName types are left as raw bytes or ASN.1 nodes
+    const altNameText = (an: any): string => {
+        if (an.type === 8 && an.oid) return an.oid;
+        if (Array.isArray(an.value)) {
+            return `(Hex) ${formatHex(an.value.map((node: any) => forge.asn1.toDer(node).getBytes()).join(''))}`;
+        }
+        const text = an.type === 7 ? ipToString(an.value) : String(an.value ?? '');
+        return hasBinaryResidue(text) ? `(Hex) ${formatHex(text)}` : text;
+    };
+
+    const decodeExtension = (extNode: any): ExtensionInfo => {
         // Use forge's internal decoder for the heavy lifting
         const ext = (forge.pki as any).certificateExtensionFromAsn1(extNode);
         const name = ext.name || ext.id;
         const critical = ext.critical;
         let value = String(ext.value);
+        let entries: AltNameEntry[] | undefined;
 
         // Human-readable formatting for common extensions
         if (name === 'subjectAltName' || name === 'issuerAltName') {
             if (ext.altNames) {
-                value = ext.altNames.map((an: any) => {
-                    const typeMap: Record<number, string> = { 1: 'Email', 2: 'DNS', 6: 'URI', 7: 'IP' };
-                    const label = typeMap[an.type as number] || `Type${an.type}`;
-                    let v = an.value || an.ip || an.uri || an.email;
-                    if (an.type === 7 && typeof v === 'string') v = ipToString(v);
-                    return `${label}:${v}`;
-                }).join(', ');
+                const altNames: AltNameEntry[] = ext.altNames.map((an: any) => ({
+                    type: ALT_NAME_TYPES[an.type] ?? `Type${an.type}`,
+                    value: altNameText(an),
+                }));
+                if (altNames.length > 0) entries = altNames;
+                value = altNames.map(e => `${e.type}:${e.value}`).join(', ') || '(empty)';
             }
         } else if (name === 'keyUsage') {
             const usages = [];
@@ -113,11 +141,11 @@ export default function CertInspector() {
         }
 
         // Final cleanup for binary residues
-        if (typeof value === 'string' && /[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]/.test(value)) {
+        if (typeof value === 'string' && hasBinaryResidue(value)) {
             value = `(Hex) ${formatHex(value)}`;
         }
 
-        return { name, value, critical };
+        return { name, value, critical, entries };
     };
 
     const extractPubKeyInfo = (spki: any) => {
@@ -171,7 +199,7 @@ export default function CertInspector() {
                 };
                 const signatureAlgo = oidMap[sigAlgOid] || (forge.pki.oids as any)[sigAlgOid] || sigAlgOid;
 
-                const extensions: { name: string; value: string; critical: boolean }[] = [];
+                const extensions: ExtensionInfo[] = [];
                 if (attributesNode && attributesNode.value) {
                     for (let i = 0; i < attributesNode.value.length; i++) {
                         const attr = attributesNode.value[i];
@@ -224,7 +252,7 @@ export default function CertInspector() {
                 };
                 const signatureAlgo = oidMap[sigAlgOid] || (forge.pki.oids as any)[sigAlgOid] || sigAlgOid;
 
-                const extensions: any[] = [];
+                const extensions: ExtensionInfo[] = [];
                 for (let i = offset + 6; i < tbs.value.length; i++) {
                     const node = tbs.value[i];
                     if (node.tagClass === forge.asn1.Class.CONTEXT_SPECIFIC && node.type === 3) {
@@ -296,8 +324,13 @@ export default function CertInspector() {
                                 <div style={{ marginTop: '0.5rem' }}>
                                     {info.extensions.map((ext, i) => (
                                         <div key={i} style={{ marginBottom: '0.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)', paddingLeft: '0.5rem' }}>
-                                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{ext.name} {ext.critical && <span style={{ color: '#f59e0b', fontSize: '0.7rem' }}>(Critical)</span>}</div>
-                                            <div style={{ fontSize: '0.8rem', opacity: 0.8, wordBreak: 'break-all' }}>{ext.value}</div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                {ext.name} {ext.critical && <span style={{ color: '#f59e0b', fontSize: '0.7rem' }}>(Critical)</span>}
+                                                {ext.entries && <span style={{ color: '#94a3b8', fontSize: '0.7rem', fontWeight: 400, marginLeft: '0.25rem' }}>{entryCountLabel(ext.entries.length)}</span>}
+                                            </div>
+                                            {ext.entries
+                                                ? <AltNameList label={ext.name} entries={ext.entries} />
+                                                : <div style={{ fontSize: '0.8rem', opacity: 0.8, wordBreak: 'break-all' }}>{ext.value}</div>}
                                         </div>
                                     ))}
                                 </div>

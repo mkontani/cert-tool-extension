@@ -4,6 +4,8 @@ import '@testing-library/jest-dom';
 import KeyPairGenerator from '../components/KeyPairGenerator';
 import CertInspector from '../components/CertInspector';
 import PubKeyDeriver from '../components/PubKeyDeriver';
+import { ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
+import { EMPTY_SAN_CERT, MIXED_SAN_CERT, SAN_CSR } from './inspectorFixtures';
 
 // Mock clipboard API
 Object.assign(navigator, {
@@ -81,6 +83,81 @@ describe('CertInspector Component', () => {
 
         const rsaMatches = within(results).getAllByText(deepestWithText('RSA'));
         expect(rsaMatches.length).toBeGreaterThanOrEqual(1);
+    });
+
+    describe('subjectAltName', () => {
+        const inspect = (pem: string) => {
+            render(<CertInspector />);
+            fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: pem } });
+            fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
+        };
+
+        const sanRows = () =>
+            within(screen.getByRole('list', { name: 'subjectAltName entries' }))
+                .getAllByRole('listitem')
+                .map(row => Array.from(row.children).map(cell => cell.textContent));
+
+        it('lists each entry on its own row with its type', () => {
+            inspect(PRIVATE_EC_LEAF);
+            expect(sanRows()).toEqual([
+                ['DNS', 'app.corp'],
+                ['DNS', '*.internal.example'],
+                ['IP', '10.0.0.5'],
+                ['IP', '2001:db8::1'],
+            ]);
+        });
+
+        it('shows the number of entries', () => {
+            inspect(PRIVATE_EC_LEAF);
+            expect(screen.getByText('4 entries')).toBeInTheDocument();
+        });
+
+        it('uses the singular for a single entry', () => {
+            inspect(ED25519_LEAF);
+            expect(screen.getByText('1 entry')).toBeInTheDocument();
+        });
+
+        it('shows only the name containing control characters as hex', () => {
+            const der = Buffer.from(PRIVATE_EC_LEAF.replace(/-----[^-]+-----|\s/g, ''), 'base64');
+            const at = der.lastIndexOf('app.corp'); // the SAN comes after the subject CN
+            expect(at).toBeGreaterThan(-1);
+            const corrupted = Buffer.concat([der.subarray(0, at), Buffer.from([0x01]), der.subarray(at + 1)]);
+            inspect(`-----BEGIN CERTIFICATE-----\n${corrupted.toString('base64')}\n-----END CERTIFICATE-----`);
+
+            expect(sanRows().slice(0, 2)).toEqual([
+                ['DNS', '(Hex) 01:70:70:2E:63:6F:72:70'],
+                ['DNS', '*.internal.example'],
+            ]);
+        });
+
+        it('labels email, URI, registeredID and otherName entries', () => {
+            inspect(MIXED_SAN_CERT);
+            const rows = sanRows();
+            expect(rows.slice(0, 4)).toEqual([
+                ['DNS', 'mixed.example'],
+                ['Email', 'admin@example.com'],
+                ['URI', 'https://example.com/id'],
+                ['RID', '1.2.3.4'],
+            ]);
+            // forge leaves otherName undecoded; its DER starts with the UPN type OID 1.3.6.1.4.1.311.20.2.3
+            expect(rows[4][0]).toBe('otherName');
+            expect(rows[4][1]).toMatch(/^\(Hex\) 06:0A:2B:06:01:04:01:82:37:14:02:03:/);
+        });
+
+        it('lists the names requested in a CSR', () => {
+            inspect(SAN_CSR);
+            expect(sanRows()).toEqual([
+                ['DNS', 'csr.example'],
+                ['DNS', 'www.csr.example'],
+                ['IP', '192.0.2.10'],
+            ]);
+        });
+
+        it('marks an extension without names as empty', () => {
+            inspect(EMPTY_SAN_CERT);
+            expect(screen.queryByRole('list', { name: 'subjectAltName entries' })).not.toBeInTheDocument();
+            expect(screen.getByText('(empty)')).toBeInTheDocument();
+        });
     });
 });
 
