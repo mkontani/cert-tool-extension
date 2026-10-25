@@ -54,8 +54,13 @@ describe('signatureAlgorithmName', () => {
         expect(signatureOf(pem)).toBe(expected);
     });
 
-    it('names Ed25519 signatures', () => {
-        expect(signatureAlgorithmName('1.3.101.112')).toBe('Ed25519');
+    it.each([
+        { oid: '1.3.101.112', expected: 'Ed25519' },
+        { oid: '1.3.14.3.2.29', expected: 'sha1WithRSASignature' },
+        { oid: '2.16.840.1.101.3.4.3.14', expected: 'sha3-256WithRSAEncryption' },
+        { oid: '2.16.840.1.101.3.4.3.10', expected: 'ecdsa-with-sha3-256' },
+    ])('names $expected signatures', ({ oid, expected }) => {
+        expect(signatureAlgorithmName(oid)).toBe(expected);
     });
 
     it('returns the OID of an unknown algorithm', () => {

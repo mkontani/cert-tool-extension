@@ -10,7 +10,7 @@ import {
     IssueAlternativeName,
     KeyUsage,
     KeyUsageFlags,
-    NameConstraints,
+    GeneralName,
     PolicyConstraints,
     SubjectAlternativeName,
     SubjectInfoAccessSyntax,
@@ -31,16 +31,26 @@ import {
     id_pe_subjectInfoAccess,
     id_qt_csp,
     id_qt_unotice,
-    type GeneralSubtrees,
     type PolicyQualifierInfo,
 } from '@peculiar/asn1-x509';
 import * as asn1js from 'asn1js';
-import { asn1String, bytesToNumber, colonHex, describeGeneralName, displayText, formatRdn, hexValue, nameFor } from './format';
+import { OID_SCT_LIST } from '../lint/extensions';
+import {
+    asn1String,
+    bytesToNumber,
+    colonHex,
+    describeGeneralName,
+    displayText,
+    formatIpBytes,
+    formatRdn,
+    hexValue,
+    nameFor,
+    undecodable,
+} from './format';
 import { describeSctList } from './sct';
 import type { DisplayEntry, ExtensionInfo } from './types';
 
 const OID_TLS_FEATURE = '1.3.6.1.5.5.7.1.24';
-const OID_SCT_LIST = '1.3.6.1.4.1.11129.2.4.2';
 const OID_CT_POISON = '1.3.6.1.4.1.11129.2.4.3';
 
 const EXTENSION_NAMES: Readonly<Record<string, string>> = {
@@ -108,9 +118,11 @@ const POLICY_NAMES: Readonly<Record<string, string>> = {
 };
 
 const TLS_FEATURES: Readonly<Record<string, string>> = {
-    5: 'status_request (OCSP Must-Staple)',
-    17: 'status_request_v2',
+    '5': 'status_request (OCSP Must-Staple)',
+    '17': 'status_request_v2',
 };
+
+const MAX_TLS_EXTENSION_TYPE = 0xffff;
 
 type Described = Pick<ExtensionInfo, 'value' | 'entries'>;
 
@@ -175,17 +187,27 @@ function describeCertificatePolicies(value: ArrayBuffer): Described {
     }));
 }
 
+const isContext = (block: asn1js.AsnType, tagNumber: number) => block.idBlock.tagClass === 3 && block.idBlock.tagNumber === tagNumber;
+
+/** A subtree base. iPAddress is read from the raw bytes, since a constraint carries a mask the IP converter would misreport. */
+function describeSubtreeBase(subtree: asn1js.AsnType): string {
+    if (!(subtree instanceof asn1js.Sequence)) throw new Error('GeneralSubtree is not a SEQUENCE');
+    const base = subtree.valueBlock.value[0];
+    if (!base) throw new Error('GeneralSubtree has no base');
+    if (isContext(base, 7) && base instanceof asn1js.Primitive) return `IP ${formatIpBytes(base.valueBlock.valueHexView)}`;
+    const name = describeGeneralName(AsnConvert.parse(base.valueBeforeDecodeView, GeneralName));
+    return `${name.type} ${name.value}`;
+}
+
+/** RFC 5280 §4.2.1.10: SEQUENCE { permittedSubtrees [0] GeneralSubtrees OPTIONAL, excludedSubtrees [1] ... }. */
 function describeNameConstraints(value: ArrayBuffer): Described {
-    const constraints = AsnConvert.parse(value, NameConstraints);
-    const subtrees = (type: string, trees: GeneralSubtrees | undefined) =>
-        (trees ?? []).map(tree => {
-            const base = describeGeneralName(tree.base);
-            return { type, value: `${base.type} ${base.value}` };
-        });
-    return listOf([
-        ...subtrees('Permitted', constraints.permittedSubtrees),
-        ...subtrees('Excluded', constraints.excludedSubtrees),
-    ]);
+    const parsed = asn1js.fromBER(value);
+    if (parsed.offset === -1 || !(parsed.result instanceof asn1js.Sequence)) throw new Error('NameConstraints is not a SEQUENCE');
+    return listOf(parsed.result.valueBlock.value.flatMap(subtrees => {
+        const type = isContext(subtrees, 0) ? 'Permitted' : isContext(subtrees, 1) ? 'Excluded' : undefined;
+        if (!type || !(subtrees instanceof asn1js.Constructed)) throw new Error('Unexpected NameConstraints field');
+        return subtrees.valueBlock.value.map(subtree => ({ type, value: describeSubtreeBase(subtree) }));
+    }));
 }
 
 function describePolicyConstraints(value: ArrayBuffer): Described {
@@ -203,10 +225,14 @@ function describeTlsFeature(value: ArrayBuffer): Described {
     if (parsed.offset === -1 || !(parsed.result instanceof asn1js.Sequence)) throw new Error('TLS feature is not a SEQUENCE');
     const features = parsed.result.valueBlock.value.map(item => {
         if (!(item instanceof asn1js.Integer)) throw new Error('TLS feature is not an INTEGER');
-        const id = String(item.valueBlock.valueDec);
-        return nameFor(TLS_FEATURES, id) ?? id;
+        const bytes = item.valueBlock.valueHexView;
+        const id = bytesToNumber(bytes);
+        if (bytes.length === 0 || bytes.length > 3 || (bytes[0] & 0x80) !== 0 || id > MAX_TLS_EXTENSION_TYPE) {
+            throw new Error('TLS feature is not a TLS extension type');
+        }
+        return nameFor(TLS_FEATURES, String(id)) ?? String(id);
     });
-    return { value: features.join(', ') };
+    return { value: features.join(', ') || '(empty)' };
 }
 
 function describeKeyUsage(value: ArrayBuffer): Described {
@@ -242,7 +268,12 @@ const DECODERS: Readonly<Record<string, (value: ArrayBuffer) => Described>> = {
 
 /** Renders a DER-encoded Extension for display. Values that cannot be decoded are shown as hex. */
 export function describeExtension(der: Uint8Array): ExtensionInfo {
-    const ext = AsnConvert.parse(der, Extension);
+    let ext: Extension;
+    try {
+        ext = AsnConvert.parse(der, Extension);
+    } catch {
+        return { name: '(undecodable extension)', critical: false, value: undecodable(der) };
+    }
     const value = ext.extnValue.buffer;
     const decoder = nameFor(DECODERS, ext.extnID);
     let described: Described;
@@ -250,7 +281,7 @@ export function describeExtension(der: Uint8Array): ExtensionInfo {
         described = decoder ? decoder(value) : { value: hexValue(value) };
     } catch {
         // A malformed or unexpected encoding is still worth showing; hex keeps every byte visible.
-        described = { value: hexValue(value) };
+        described = { value: undecodable(value) };
     }
     return { name: nameFor(EXTENSION_NAMES, ext.extnID) ?? ext.extnID, critical: ext.critical, ...described };
 }

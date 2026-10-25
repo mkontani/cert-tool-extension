@@ -1,6 +1,7 @@
 import { AsnConvert } from '@peculiar/asn1-schema';
 import { Name, type GeneralName, type OtherName, type RelativeDistinguishedName } from '@peculiar/asn1-x509';
 import * as asn1js from 'asn1js';
+import { formatIp } from '../lint/net';
 import type { DisplayEntry } from './types';
 
 type Binary = ArrayBuffer | ArrayBufferView;
@@ -16,15 +17,19 @@ const toBytes = (data: Binary): Uint8Array =>
 export const colonHex = (data: Binary): string =>
     Array.from(toBytes(data), b => b.toString(16).padStart(2, '0').toUpperCase()).join(':');
 
-export const hexValue = (data: Binary): string => `(Hex) ${colonHex(data)}`;
+export const hexValue = (data: Binary): string => (toBytes(data).length === 0 ? '(empty)' : `(Hex) ${colonHex(data)}`);
+
+/** Bytes that should have decoded but did not; still shown so nothing in the certificate is hidden. */
+export const undecodable = (data: Binary): string => `(Undecodable) ${hexValue(data)}`;
 
 export const bytesToNumber = (data: Binary): number => toBytes(data).reduce((n, b) => n * 256 + b, 0);
 
-const CONTROL_CHARACTERS = /[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]/;
+/** C0/C1 controls, plus zero-width and bidi formatting characters that can disguise a name (e.g. "evil\u202emoc.elpmaxe"). */
+const HIDDEN_CHARACTERS = /[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/;
 
-/** Text taken from the certificate, or its bytes as hex when it contains characters that cannot be shown. */
+/** Text taken from the certificate, or its bytes as hex when it contains characters that cannot be shown faithfully. */
 export function displayText(text: string): string {
-    if (!CONTROL_CHARACTERS.test(text)) return text;
+    if (!HIDDEN_CHARACTERS.test(text)) return text;
     const bytes = /[^\x00-\xff]/.test(text) ? new TextEncoder().encode(text) : Uint8Array.from(text, c => c.charCodeAt(0));
     return hexValue(bytes);
 }
@@ -47,11 +52,18 @@ const ATTRIBUTE_NAMES: Readonly<Record<string, string>> = {
     '2.5.4.10': 'organizationName',
     '2.5.4.11': 'organizationalUnitName',
     '2.5.4.12': 'title',
+    '2.5.4.13': 'description',
     '2.5.4.15': 'businessCategory',
     '2.5.4.17': 'postalCode',
+    '2.5.4.41': 'name',
     '2.5.4.42': 'givenName',
+    '2.5.4.43': 'initials',
+    '2.5.4.44': 'generationQualifier',
+    '2.5.4.46': 'dnQualifier',
+    '2.5.4.65': 'pseudonym',
     '2.5.4.97': 'organizationIdentifier',
     '1.2.840.113549.1.9.1': 'emailAddress',
+    '1.2.840.113549.1.9.2': 'unstructuredName',
     '0.9.2342.19200300.100.1.1': 'userId',
     '0.9.2342.19200300.100.1.25': 'domainComponent',
     '1.3.6.1.4.1.311.60.2.1.1': 'jurisdictionOfIncorporationLocalityName',
@@ -64,8 +76,14 @@ export const formatRdn = (rdn: RelativeDistinguishedName): string =>
 
 export const formatName = (name: Name): string => name.map(formatRdn).join(', ');
 
-/** Renders a DER-encoded Name (subject or issuer). */
-export const describeName = (der: Uint8Array): string => formatName(AsnConvert.parse(der, Name));
+/** Renders a DER-encoded Name (subject or issuer); one that cannot be decoded is shown as hex. */
+export function describeName(der: Uint8Array): string {
+    try {
+        return formatName(AsnConvert.parse(der, Name));
+    } catch {
+        return undecodable(der);
+    }
+}
 
 const OTHER_NAME_LABELS: Readonly<Record<string, string>> = {
     '1.3.6.1.4.1.311.20.2.3': 'UPN',
@@ -75,6 +93,20 @@ function describeOtherName(other: OtherName): string {
     const label = nameFor(OTHER_NAME_LABELS, other.typeId) ?? other.typeId;
     const text = asn1String(other.value);
     return `${label}: ${text === undefined ? hexValue(other.value) : displayText(text)}`;
+}
+
+/**
+ * Formats raw iPAddress bytes: an address (4 or 16 bytes) or, in name constraints, an address and mask
+ * (8 or 32 bytes). A mask is written as a prefix length only when it is contiguous.
+ */
+export function formatIpBytes(bytes: Uint8Array): string {
+    if (bytes.length === 4 || bytes.length === 16) return formatIp(bytes);
+    if (bytes.length !== 8 && bytes.length !== 32) return hexValue(bytes);
+    const address = bytes.subarray(0, bytes.length / 2);
+    const mask = bytes.subarray(bytes.length / 2);
+    const bits = Array.from(mask, b => b.toString(2).padStart(8, '0')).join('');
+    if (!/^1*0*$/.test(bits)) return `${formatIp(address)}/${formatIp(mask)}`;
+    return `${formatIp(address)}/${bits.replace(/0+$/, '').length}`;
 }
 
 /** The IP converter returns bare hex for lengths that are neither an address nor an address/mask pair. */

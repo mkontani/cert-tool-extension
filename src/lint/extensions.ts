@@ -23,7 +23,7 @@ import {
 import { formatIp, parseIp } from './net';
 import type { CertExtensions, KeyUsageFlag, SubjectAltNameInfo } from './types';
 
-const OID_SCT_LIST = '1.3.6.1.4.1.11129.2.4.2';
+export const OID_SCT_LIST = '1.3.6.1.4.1.11129.2.4.2';
 
 const KEY_USAGE_BITS: ReadonlyArray<readonly [KeyUsageFlags, KeyUsageFlag]> = [
     [KeyUsageFlags.digitalSignature, 'digitalSignature'],

@@ -1,12 +1,11 @@
 import { AsnConvert } from '@peculiar/asn1-schema';
 import { SubjectPublicKeyInfo } from '@peculiar/asn1-x509';
 import * as asn1js from 'asn1js';
+import { OID_EC_PUBLIC_KEY, OID_RSA_ENCRYPTION } from '../lint/checks/common';
 import { rsaModulusBits } from '../lint/parse';
-import { nameFor } from './format';
+import { nameFor, undecodable } from './format';
 
-const OID_RSA_ENCRYPTION = '1.2.840.113549.1.1.1';
 const OID_RSASSA_PSS = '1.2.840.113549.1.1.10';
-const OID_EC_PUBLIC_KEY = '1.2.840.10045.2.1';
 
 const KEY_ALGORITHMS: Readonly<Record<string, string>> = {
     '1.3.101.110': 'X25519',
@@ -30,8 +29,9 @@ const CURVES: Readonly<Record<string, string>> = {
     '1.2.156.10197.1.301': 'SM2',
 };
 
-/** Names as node-forge spelled them, so the Inspector's existing output does not change. */
+/** RSA names as node-forge spells them and ECDSA names as the Inspector already showed them, so existing output does not change. */
 const SIGNATURE_ALGORITHMS: Readonly<Record<string, string>> = {
+    '1.2.840.113549.1.1.2': 'md2WithRSAEncryption',
     '1.2.840.113549.1.1.4': 'md5WithRSAEncryption',
     '1.2.840.113549.1.1.5': 'sha1WithRSAEncryption',
     '1.2.840.113549.1.1.10': 'RSASSA-PSS',
@@ -39,11 +39,21 @@ const SIGNATURE_ALGORITHMS: Readonly<Record<string, string>> = {
     '1.2.840.113549.1.1.12': 'sha384WithRSAEncryption',
     '1.2.840.113549.1.1.13': 'sha512WithRSAEncryption',
     '1.2.840.113549.1.1.14': 'sha224WithRSAEncryption',
+    '1.3.14.3.2.29': 'sha1WithRSASignature',
+    '2.16.840.1.101.3.4.3.13': 'sha3-224WithRSAEncryption',
+    '2.16.840.1.101.3.4.3.14': 'sha3-256WithRSAEncryption',
+    '2.16.840.1.101.3.4.3.15': 'sha3-384WithRSAEncryption',
+    '2.16.840.1.101.3.4.3.16': 'sha3-512WithRSAEncryption',
     '1.2.840.10045.4.1': 'ecdsa-with-sha1',
     '1.2.840.10045.4.3.1': 'ecdsa-with-sha224',
     '1.2.840.10045.4.3.2': 'ecdsa-with-sha256',
     '1.2.840.10045.4.3.3': 'ecdsa-with-sha384',
     '1.2.840.10045.4.3.4': 'ecdsa-with-sha512',
+    '2.16.840.1.101.3.4.3.9': 'ecdsa-with-sha3-224',
+    '2.16.840.1.101.3.4.3.10': 'ecdsa-with-sha3-256',
+    '2.16.840.1.101.3.4.3.11': 'ecdsa-with-sha3-384',
+    '2.16.840.1.101.3.4.3.12': 'ecdsa-with-sha3-512',
+    '1.2.156.10197.1.501': 'SM2-with-SM3',
     '1.2.840.10040.4.3': 'dsa-with-sha1',
     '2.16.840.1.101.3.4.3.2': 'dsa-with-sha256',
     '1.3.101.112': 'Ed25519',
@@ -64,7 +74,12 @@ function curveOf(parameters: ArrayBuffer | null | undefined): string {
 
 /** Renders a DER-encoded SubjectPublicKeyInfo, e.g. "RSA (2048 bits)" or "ECDSA (P-256)". */
 export function describePublicKey(spkiDer: Uint8Array): string {
-    const spki = AsnConvert.parse(spkiDer, SubjectPublicKeyInfo);
+    let spki: SubjectPublicKeyInfo;
+    try {
+        spki = AsnConvert.parse(spkiDer, SubjectPublicKeyInfo);
+    } catch {
+        return undecodable(spkiDer);
+    }
     const { algorithm, parameters } = spki.algorithm;
     if (algorithm === OID_RSA_ENCRYPTION || algorithm === OID_RSASSA_PSS) {
         const label = algorithm === OID_RSASSA_PSS ? 'RSA-PSS' : 'RSA';

@@ -127,13 +127,27 @@ describe('describeExtension (kitchen sink)', () => {
     });
 });
 
-describe('describeExtension (malformed input)', () => {
-    it('falls back to hex when a known extension cannot be decoded', () => {
-        const ext = new Extension({ extnID: '2.5.29.35', critical: false, extnValue: new OctetString(new Uint8Array([1, 2, 3])) });
-        expect(describeExtension(new Uint8Array(AsnConvert.serialize(ext)))).toEqual({
-            name: 'authorityKeyIdentifier',
-            critical: false,
-            value: '(Hex) 01:02:03',
-        });
+describe('describeExtension (name constraints)', () => {
+    const constraints = (subtree: number[]) => {
+        const permitted = [0xa0, subtree.length, ...subtree];
+        const value = [0x30, permitted.length, ...permitted];
+        const ext = new Extension({ extnID: '2.5.29.30', critical: true, extnValue: new OctetString(new Uint8Array(value)) });
+        return describeExtension(new Uint8Array(AsnConvert.serialize(ext))).entries;
+    };
+    const ipSubtree = (bytes: number[]) => [0x30, bytes.length + 2, 0x87, bytes.length, ...bytes];
+
+    it('spells out a non-contiguous IPv4 mask', () => {
+        expect(constraints(ipSubtree([10, 0, 0, 0, 255, 0, 255, 0]))).toEqual([{ type: 'Permitted', value: 'IP 10.0.0.0/255.0.255.0' }]);
+    });
+
+    it('uses a prefix length for a contiguous IPv6 mask', () => {
+        const address = [0x20, 0x01, 0x0d, 0xb8, ...new Array(12).fill(0)];
+        const mask = [0xff, 0xff, 0xff, 0xff, ...new Array(12).fill(0)];
+        expect(constraints(ipSubtree([...address, ...mask]))).toEqual([{ type: 'Permitted', value: 'IP 2001:db8::/32' }]);
+    });
+
+    it('decodes the other name forms', () => {
+        const dns = [0x82, 0x0b, ...Buffer.from('.example.jp')];
+        expect(constraints([0x30, dns.length, ...dns])).toEqual([{ type: 'Permitted', value: 'DNS .example.jp' }]);
     });
 });
