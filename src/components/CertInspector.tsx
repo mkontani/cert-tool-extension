@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import forge from 'node-forge';
 import { Search, AlertCircle } from 'lucide-react';
+import { describePublicKey, signatureAlgorithmName } from '../inspector/algorithms';
 import { describeExtension } from '../inspector/extensions';
 import { describeName } from '../inspector/format';
 import { findPemBlock } from '../inspector/pem';
@@ -20,7 +21,6 @@ interface ParsedInfo {
     notBefore?: string;
     notAfter?: string;
     pubKeyAlgo?: string;
-    pubKeySize?: number;
     extensions?: ExtensionInfo[];
     signatureAlgo?: string;
     /** Shown above the details, e.g. when only the first certificate of a chain is inspected. */
@@ -31,30 +31,6 @@ export default function CertInspector() {
     const [inputPem, setInputPem] = useState('');
     const [info, setInfo] = useState<ParsedInfo | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    const extractPubKeyInfo = (spki: any) => {
-        const algIdSeq = spki.value[0];
-        const algOid = forge.asn1.derToOid(algIdSeq.value[0].value);
-
-        if (algOid === '1.2.840.113549.1.1.1') {
-            try {
-                const publicKey = forge.pki.publicKeyFromAsn1(spki);
-                return { algo: 'RSA', size: (publicKey as any).n.bitLength() };
-            } catch (_e) {
-                return { algo: 'RSA (Parse Error)' };
-            }
-        } else if (algOid === '1.2.840.10045.2.1') {
-            const curveOid = forge.asn1.derToOid(algIdSeq.value[1].value);
-            let curveName = 'Unknown';
-            if (curveOid === '1.2.840.10045.3.1.7') curveName = 'P-256';
-            else if (curveOid === '1.3.132.0.34') curveName = 'P-384';
-            else if (curveOid === '1.3.132.0.35') curveName = 'P-521';
-            return { algo: `ECDSA (${curveName})` };
-        } else if (algOid === '1.3.101.112') {
-            return { algo: 'Ed25519' };
-        }
-        return { algo: `Unknown (${algOid})` };
-    };
 
     const parseInput = () => {
         setError(null);
@@ -75,15 +51,8 @@ export default function CertInspector() {
                 const spki = cri.value[2];
                 const attributesNode = cri.value[3];
 
-                const pubKeyInfo = extractPubKeyInfo(spki);
-                const sigAlgOid = forge.asn1.derToOid((asn1 as any).value[1].value[0].value);
-                const oidMap: Record<string, string> = {
-                    '1.2.840.10045.4.3.2': 'ecdsa-with-sha256',
-                    '1.2.840.10045.4.3.3': 'ecdsa-with-sha384',
-                    '1.2.840.10045.4.3.4': 'ecdsa-with-sha512',
-                    '1.3.101.112': 'Ed25519'
-                };
-                const signatureAlgo = oidMap[sigAlgOid] || (forge.pki.oids as any)[sigAlgOid] || sigAlgOid;
+                const pubKeyAlgo = describePublicKey(derBytes(spki));
+                const signatureAlgo = signatureAlgorithmName(forge.asn1.derToOid((asn1 as any).value[1].value[0].value));
 
                 const extensions: ExtensionInfo[] = [];
                 if (attributesNode && attributesNode.value) {
@@ -102,8 +71,7 @@ export default function CertInspector() {
                 setInfo({
                     type: 'Certificate Signing Request (CSR)',
                     subject,
-                    pubKeyAlgo: pubKeyInfo.algo,
-                    pubKeySize: pubKeyInfo.size,
+                    pubKeyAlgo,
                     signatureAlgo,
                     extensions,
                     notice
@@ -129,15 +97,8 @@ export default function CertInspector() {
                 const subject = describeName(derBytes(tbs.value[offset + 4]));
                 const spki = tbs.value[offset + 5];
 
-                const pubKeyInfo = extractPubKeyInfo(spki);
-                const sigAlgOid = forge.asn1.derToOid((asn1 as any).value[1].value[0].value);
-                const oidMap: Record<string, string> = {
-                    '1.2.840.10045.4.3.2': 'ecdsa-with-sha256',
-                    '1.2.840.10045.4.3.3': 'ecdsa-with-sha384',
-                    '1.2.840.10045.4.3.4': 'ecdsa-with-sha512',
-                    '1.3.101.112': 'Ed25519'
-                };
-                const signatureAlgo = oidMap[sigAlgOid] || (forge.pki.oids as any)[sigAlgOid] || sigAlgOid;
+                const pubKeyAlgo = describePublicKey(derBytes(spki));
+                const signatureAlgo = signatureAlgorithmName(forge.asn1.derToOid((asn1 as any).value[1].value[0].value));
 
                 const extensions: ExtensionInfo[] = [];
                 for (let i = offset + 6; i < tbs.value.length; i++) {
@@ -157,8 +118,7 @@ export default function CertInspector() {
                     serial,
                     notBefore: parseDate(validity.value[0]),
                     notAfter: parseDate(validity.value[1]),
-                    pubKeyAlgo: pubKeyInfo.algo,
-                    pubKeySize: pubKeyInfo.size,
+                    pubKeyAlgo,
                     signatureAlgo,
                     extensions,
                     notice
@@ -204,7 +164,7 @@ export default function CertInspector() {
                         <strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Subject:</strong><div style={{ wordBreak: 'break-word', color: '#e2e8f0' }}>{info.subject}</div>
                         {info.issuer && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Issuer:</strong><div style={{ wordBreak: 'break-word', color: '#e2e8f0' }}>{info.issuer}</div></>}
                         {info.notBefore && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Validity:</strong><div><div>{info.notBefore}</div><div style={{ fontSize: '0.8rem', opacity: 0.7 }}>to</div><div>{info.notAfter}</div></div></>}
-                        {(info.pubKeyAlgo || info.pubKeySize) && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Public Key:</strong><div>{info.pubKeyAlgo} {info.pubKeySize ? `(${info.pubKeySize} bits)` : ''}</div></>}
+                        {info.pubKeyAlgo && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Public Key:</strong><div>{info.pubKeyAlgo}</div></>}
                         {info.signatureAlgo && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Signature:</strong><div>{info.signatureAlgo}</div></>}
                         {info.extensions && info.extensions.length > 0 && (
                             <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap', marginTop: '0.5rem' }}>Extensions:</strong>

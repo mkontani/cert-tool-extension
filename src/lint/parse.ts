@@ -64,7 +64,7 @@ function readRawFields(der: Uint8Array): RawFields {
 }
 
 /** Bit length of the modulus of an RSAPublicKey ::= SEQUENCE { modulus INTEGER, publicExponent INTEGER }. */
-function rsaModulusBits(subjectPublicKey: Uint8Array): number | undefined {
+export function rsaModulusBits(subjectPublicKey: Uint8Array): number | undefined {
     const parsed = asn1js.fromBER(subjectPublicKey);
     if (parsed.offset === -1 || !(parsed.result instanceof asn1js.Sequence)) return undefined;
     const [modulus, exponent] = parsed.result.valueBlock.value;

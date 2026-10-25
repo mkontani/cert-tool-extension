@@ -5,7 +5,7 @@ import KeyPairGenerator from '../components/KeyPairGenerator';
 import CertInspector from '../components/CertInspector';
 import PubKeyDeriver from '../components/PubKeyDeriver';
 import { CA_CERT, ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
-import { EMPTY_SAN_CERT, KITCHEN_SINK_CERT, MIXED_SAN_CERT, SAN_CSR } from './inspectorFixtures';
+import { EMPTY_SAN_CERT, KITCHEN_SINK_CERT, MIXED_SAN_CERT, RSA_PSS_CERT, SAN_CSR } from './inspectorFixtures';
 
 // Mock clipboard API
 Object.assign(navigator, {
@@ -94,6 +94,14 @@ describe('CertInspector Component', () => {
         const expected = 'countryName=JP, organizationName=株式会社テスト, commonName=ks.example.jp';
         expect(fieldValue('Subject:')).toBe(expected);
         expect(fieldValue('Issuer:')).toBe(expected);
+    });
+
+    it('names the key and signature algorithms', () => {
+        render(<CertInspector />);
+        fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: RSA_PSS_CERT } });
+        fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
+        expect(fieldValue('Public Key:')).toBe('RSA-PSS (2048 bits)');
+        expect(fieldValue('Signature:')).toBe('RSASSA-PSS');
     });
 
     it('inspects the first certificate of a pasted chain', () => {
