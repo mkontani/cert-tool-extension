@@ -7,26 +7,50 @@ export interface PemBlock {
     readonly count: number;
 }
 
-const PEM_BLOCK = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/g;
-
-const kindOf = (label: string): PemKind | undefined => {
-    if (label === 'CERTIFICATE') return 'certificate';
-    if (label === 'CERTIFICATE REQUEST' || label === 'NEW CERTIFICATE REQUEST') return 'csr';
-    return undefined;
+const LABELS: Readonly<Record<string, PemKind>> = {
+    'CERTIFICATE': 'certificate',
+    'X509 CERTIFICATE': 'certificate',
+    'CERTIFICATE REQUEST': 'csr',
+    'NEW CERTIFICATE REQUEST': 'csr',
 };
 
-/** Finds the first certificate or CSR in pasted text, skipping keys and other PEM blocks. */
+const BEGIN = '-----BEGIN ';
+const DASHES = '-----';
+const MAX_LABEL_LENGTH = 64;
+
+const kindOf = (label: string): PemKind | undefined => (Object.hasOwn(LABELS, label) ? LABELS[label] : undefined);
+
+/** Occurrences of every BEGIN line of this kind; one split per label keeps this linear. */
+const countBlocks = (text: string, kind: PemKind) =>
+    Object.keys(LABELS)
+        .filter(label => LABELS[label] === kind)
+        .reduce((count, label) => count + text.split(`${BEGIN}${label}${DASHES}`).length - 1, 0);
+
+function decodeBase64(body: string, label: string): Uint8Array {
+    try {
+        return Uint8Array.from(atob(body.replace(/\s/g, '')), c => c.charCodeAt(0));
+    } catch {
+        throw new Error(`The ${label} block is not valid base64.`);
+    }
+}
+
+/**
+ * Finds the first certificate or CSR in pasted text, skipping keys and other PEM blocks.
+ * Uses indexOf rather than a regex so that hostile input cannot make the scan quadratic.
+ */
 export function findPemBlock(text: string): PemBlock | null {
-    const blocks = [...text.matchAll(PEM_BLOCK)].flatMap(([, label, body]) => {
+    for (let begin = text.indexOf(BEGIN); begin !== -1; begin = text.indexOf(BEGIN, begin + BEGIN.length)) {
+        const labelStart = begin + BEGIN.length;
+        const labelEnd = text.indexOf(DASHES, labelStart);
+        if (labelEnd === -1) return null;
+        if (labelEnd - labelStart > MAX_LABEL_LENGTH) continue;
+        const label = text.slice(labelStart, labelEnd);
         const kind = kindOf(label);
-        return kind ? [{ kind, body }] : [];
-    });
-    if (blocks.length === 0) return null;
-    const [first] = blocks;
-    const binary = atob(first.body.replace(/\s/g, ''));
-    return {
-        kind: first.kind,
-        der: Uint8Array.from(binary, c => c.charCodeAt(0)),
-        count: blocks.filter(block => block.kind === first.kind).length,
-    };
+        if (!kind) continue;
+        const bodyStart = labelEnd + DASHES.length;
+        const end = text.indexOf(`-----END ${label}${DASHES}`, bodyStart);
+        if (end === -1) throw new Error(`The ${label} block has no matching END line.`);
+        return { kind, der: decodeBase64(text.slice(bodyStart, end), label), count: countBlocks(text, kind) };
+    }
+    return null;
 }
