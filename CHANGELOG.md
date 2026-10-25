@@ -6,6 +6,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ### Fixed
 - The CSR and public key tabs no longer print debug messages to the browser console.
+- The popup no longer scrolls sideways when long results add a vertical scrollbar (on systems with always-visible scrollbars, such as Windows).
 
 ## [1.1.0] - 2026-10-25
 

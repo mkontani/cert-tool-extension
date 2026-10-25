@@ -21,6 +21,8 @@ body {
   margin: 0;
   display: flex;
   width: 600px; /* Extension popup width */
+  /* Shrink by the vertical scrollbar's width when long results scroll, instead of overflowing sideways. */
+  max-width: 100%;
   min-height: 600px;
   place-items: flex-start;
   justify-content: center;
@@ -111,7 +113,7 @@ h1, h2, h3 {
 }
 
 .tab {
-  padding: 0.5rem 0.6rem;
+  padding: 0.5rem 0.5rem;
   border-radius: 8px;
   cursor: pointer;
   background: transparent;
