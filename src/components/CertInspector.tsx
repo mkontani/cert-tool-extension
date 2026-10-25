@@ -2,6 +2,7 @@ import { useState } from 'react';
 import forge from 'node-forge';
 import { Search, AlertCircle } from 'lucide-react';
 import { describeExtension } from '../inspector/extensions';
+import { describeName } from '../inspector/format';
 import type { ExtensionInfo } from '../inspector/types';
 import EntryList from './EntryList';
 
@@ -27,31 +28,6 @@ export default function CertInspector() {
     const [inputPem, setInputPem] = useState('');
     const [info, setInfo] = useState<ParsedInfo | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    const formatDN = (dn: { attributes: any[] }) => {
-        return dn.attributes.map(attr => {
-            const shortName = attr.shortName || attr.name;
-            return `${shortName}=${attr.value}`;
-        }).join(', ');
-    };
-
-    const parseDN = (asn1: any) => {
-        const attributes: any[] = [];
-        if (!asn1 || asn1.type !== forge.asn1.Type.SEQUENCE) return { attributes };
-        for (const set of asn1.value) {
-            if (set.type !== forge.asn1.Type.SET) continue;
-            for (const seq of set.value) {
-                if (seq.type !== forge.asn1.Type.SEQUENCE) continue;
-                const oid = forge.asn1.derToOid(seq.value[0].value);
-                const valueNode = seq.value[1];
-                const value = valueNode.value;
-                // Handle different string types (UTF8, Printable, etc.) correctly if needed
-                const name = (forge.pki.oids as any)[oid] || oid;
-                attributes.push({ name, value, shortName: name });
-            }
-        }
-        return { attributes };
-    };
 
     const extractPubKeyInfo = (spki: any) => {
         const algIdSeq = spki.value[0];
@@ -90,7 +66,7 @@ export default function CertInspector() {
 
             if (inputPem.includes('CERTIFICATE REQUEST')) {
                 const cri = (asn1 as any).value[0];
-                const subject = formatDN(parseDN(cri.value[1]));
+                const subject = describeName(derBytes(cri.value[1]));
                 const spki = cri.value[2];
                 const attributesNode = cri.value[3];
 
@@ -135,7 +111,7 @@ export default function CertInspector() {
                 }
 
                 const serial = (forge.util as any).bytesToHex(tbs.value[offset].value);
-                const issuer = formatDN(parseDN(tbs.value[offset + 2]));
+                const issuer = describeName(derBytes(tbs.value[offset + 2]));
 
                 const validity = tbs.value[offset + 3];
                 const parseDate = (node: any) => {
@@ -144,7 +120,7 @@ export default function CertInspector() {
                     return 'Unknown';
                 };
 
-                const subject = formatDN(parseDN(tbs.value[offset + 4]));
+                const subject = describeName(derBytes(tbs.value[offset + 4]));
                 const spki = tbs.value[offset + 5];
 
                 const pubKeyInfo = extractPubKeyInfo(spki);

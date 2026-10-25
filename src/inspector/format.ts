@@ -1,4 +1,5 @@
-import type { GeneralName, Name, OtherName, RelativeDistinguishedName } from '@peculiar/asn1-x509';
+import { AsnConvert } from '@peculiar/asn1-schema';
+import { Name, type GeneralName, type OtherName, type RelativeDistinguishedName } from '@peculiar/asn1-x509';
 import * as asn1js from 'asn1js';
 import type { DisplayEntry } from './types';
 
@@ -62,6 +63,9 @@ export const formatRdn = (rdn: RelativeDistinguishedName): string =>
     rdn.map(atv => `${nameFor(ATTRIBUTE_NAMES, atv.type) ?? atv.type}=${displayText(atv.value.toString())}`).join(' + ');
 
 export const formatName = (name: Name): string => name.map(formatRdn).join(', ');
+
+/** Renders a DER-encoded Name (subject or issuer). */
+export const describeName = (der: Uint8Array): string => formatName(AsnConvert.parse(der, Name));
 
 const OTHER_NAME_LABELS: Readonly<Record<string, string>> = {
     '1.3.6.1.4.1.311.20.2.3': 'UPN',
