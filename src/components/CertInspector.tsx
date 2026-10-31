@@ -5,6 +5,7 @@ import { findPemBlocks, MAX_PEM_BLOCKS, type PemBlock } from '../inspector/pem';
 import type { InspectionResult } from '../inspector/types';
 import ChainSelector from './ChainSelector';
 import EntryList from './EntryList';
+import PageScanButton from './PageScanButton';
 
 const entryCountLabel = (count: number) => `${count} ${count === 1 ? 'entry' : 'entries'}`;
 
@@ -65,6 +66,7 @@ export default function CertInspector() {
                 <Search size={24} color="#06b6d4" />
                 <h2 style={{ margin: 0 }}>Certificate Inspector</h2>
             </div>
+            <PageScanButton />
             <div style={{ marginBottom: '1.5rem' }}>
                 <label htmlFor="inspector-input">Input (Certificate or CSR)</label>
                 <textarea

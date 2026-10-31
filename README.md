@@ -44,6 +44,12 @@ Check whether a server certificate is safe to deploy, similar to [zlint](https:/
 - **Cited sources**: Every finding links back to the BR section, RFC, or root-program policy it comes from.
 - **Out of scope**: Chain building, revocation status lookups, SCT signature verification, CSRs, and CA certificates.
 
+### 6. Inspect Certificates on Web Pages
+Check certificates and CSRs pasted into docs, issues, or CI logs without copying them into the popup.
+- **Scan this page**: The button on the Inspector tab marks every certificate and CSR on the current page with a badge showing its name and days left (green, amber under 30 days, red when expired or not yet valid). Hover or click a badge for the full details; a pasted chain gets one badge listing every entry.
+- **Right-click a selection**: Select a PEM block, right-click, and pick *Inspect certificate with Cert Tool*.
+- **Only when you ask**: Cert Tool reads a page only after you click the button or the menu item (the `activeTab` permission), never in the background, and the page text never leaves your browser. Browser pages such as `chrome://` and the Chrome Web Store cannot be scanned.
+
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Installation
