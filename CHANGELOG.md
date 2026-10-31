@@ -17,6 +17,9 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - The CSR and public key tabs no longer print debug messages to the browser console.
 - The popup no longer scrolls sideways when long results add a vertical scrollbar (on systems with always-visible scrollbars, such as Windows).
 
+### Security
+- Updated node-forge to 1.4.2. It fixes a denial of service in which a small crafted certificate with deeply nested BIT STRINGs made the Inspector use gigabytes of memory, plus RSA signature forgery and other issues in parts of node-forge Cert Tool does not use. This includes GHSA-86w9-cpqp-85rv, which had no fix at the 1.1.0 release.
+
 ## [1.1.0] - 2026-10-25
 
 ### Added

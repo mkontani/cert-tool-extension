@@ -4,6 +4,7 @@ import { Extension } from '@peculiar/asn1-x509';
 import { describePublicKey } from '../../inspector/algorithms';
 import { describeExtension } from '../../inspector/extensions';
 import { describeName } from '../../inspector/format';
+import { inspect } from '../../inspector/inspect';
 
 const extension = (extnID: string, value: number[]) =>
     new Uint8Array(AsnConvert.serialize(new Extension({ extnID, critical: false, extnValue: new OctetString(new Uint8Array(value)) })));
@@ -64,5 +65,37 @@ describe('fields that cannot be decoded', () => {
         expect(describeExtension(extension('1.3.6.1.5.5.7.1.24', [0x30, 0x03, 0x02, 0x01, 0xff])).value).toMatch(/^\(Undecodable\) /);
         const big = [0x30, 0x05, 0x02, 0x03, 0x01, 0x00, 0x05];
         expect(describeExtension(extension('1.3.6.1.5.5.7.1.24', big)).value).toMatch(/^\(Undecodable\) /);
+    });
+});
+
+/** DER length octets (short or long form). */
+function derLength(n: number): number[] {
+    if (n < 0x80) return [n];
+    const bytes: number[] = [];
+    for (let v = n; v > 0; v = Math.floor(v / 256)) bytes.unshift(v & 0xff);
+    return [0x80 | bytes.length, ...bytes];
+}
+
+/** A SEQUENCE holding BIT STRINGs nested `depth` deep, each wrapping the next as its contents. */
+function nestedBitStrings(depth: number): Uint8Array {
+    const headers: number[][] = [];
+    let size = 3;
+    for (let i = 0; i < depth; i++) {
+        const header = [0x03, ...derLength(size + 1), 0x00];
+        headers.push(header);
+        size += header.length;
+    }
+    const inner = [...headers.reverse().flat(), 0x03, 0x01, 0x00];
+    return Uint8Array.from([0x30, ...derLength(inner.length), ...inner]);
+}
+
+describe('hostile structure', () => {
+    // node-forge up to 1.4.0 decoded nested BIT STRINGs past its depth limit, keeping a copy per level:
+    // this 15 KB input took about a gigabyte of memory, enough to crash a tab (GHSA in forge 1.4.1).
+    it('rejects deeply nested BIT STRINGs quickly', () => {
+        const der = nestedBitStrings(3000);
+        const started = performance.now();
+        expect(() => inspect(der, 'certificate')).toThrow();
+        expect(performance.now() - started).toBeLessThan(200);
     });
 });
