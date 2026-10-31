@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Cert Tool",
-    "version": "1.1.0",
-    "description": "Generate keys and CSRs, inspect certificate chains, and lint certificates against CA/B Forum rules, all locally in your browser.",
+    "version": "1.2.0",
+    "description": "Generate keys and CSRs, inspect certificates and chains, even on web pages, and lint them against CA/B Forum rules, all locally.",
     "action": {
         "default_popup": "index.html",
         "default_title": "Cert Tool",
