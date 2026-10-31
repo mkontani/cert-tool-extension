@@ -53,6 +53,9 @@ Check certificates and CSRs pasted into docs, issues, or CI logs without copying
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
+## Privacy
+Cert Tool runs entirely in your browser and sends nothing anywhere. See [PRIVACY.md](PRIVACY.md) for details.
+
 ## Installation
 
 1. Clone this repository.
