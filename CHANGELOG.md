@@ -4,6 +4,15 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+- Inspect certificates and CSRs on web pages:
+  - **Scan this page** (Inspector tab) badges every certificate and CSR on the current page with its name and days left, colored by validity. Hover or click a badge for subject, issuer, validity, key, signature, and extensions. A pasted chain gets one badge listing every entry.
+  - Right-click a selected PEM block and pick **Inspect certificate with Cert Tool**.
+  - Works with code viewers that put each line in its own element and with text in form fields. Private keys, cut-off blocks, and blocks the page hides are skipped.
+  - Every details card notes that it shows what the certificate claims; signatures and trust are not checked.
+  - If a selection cannot be inspected (e.g. on a browser page), the toolbar icon shows "!" with the reason.
+  - Pages are read only when you click the button or the menu item (new `activeTab`, `scripting`, and `contextMenus` permissions, none of which show an install warning), and the page text never leaves the browser.
+
 ### Fixed
 - The CSR and public key tabs no longer print debug messages to the browser console.
 - The popup no longer scrolls sideways when long results add a vertical scrollbar (on systems with always-visible scrollbars, such as Windows).
