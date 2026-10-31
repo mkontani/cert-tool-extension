@@ -108,6 +108,38 @@ describe('findPemContainers', () => {
         expect(container.text).toBe(`${SAN_CSR}\n${MIXED_SAN_CERT}`);
     });
 
+    describe('hidden text', () => {
+        const hide = (id: string) => Object.assign(document.getElementById(id)!, { checkVisibility: () => false });
+        const [firstHalf, secondHalf] = [MIXED_SAN_CERT.slice(0, 200), MIXED_SAN_CERT.slice(200)];
+
+        it('skips a block split across hidden elements inside a visible one', () => {
+            document.body.innerHTML = `<div id="shown"><span id="h1">${firstHalf}</span><span id="h2">${secondHalf}</span></div>`;
+            hide('h1');
+            hide('h2');
+            expect(ids()).toEqual([]);
+        });
+
+        it('skips a block when any part of it is hidden', () => {
+            document.body.innerHTML = `<div id="shown"><span id="h1">${firstHalf}</span><span>${secondHalf}</span></div>${pre(SAN_CSR, 'csr')}`;
+            hide('h1');
+            expect(ids()).toEqual(['csr']);
+        });
+
+        it('ignores hidden whitespace inside a block', () => {
+            const [top, rest] = [MIXED_SAN_CERT.slice(0, 200), MIXED_SAN_CERT.slice(200)];
+            document.body.innerHTML = `<pre id="p">${top}<span id="gap"> </span>${rest}</pre>`;
+            hide('gap');
+            expect(ids()).toEqual(['p']);
+        });
+
+        it('skips a hidden textarea', () => {
+            document.body.innerHTML = '<textarea id="ta"></textarea>';
+            (document.getElementById('ta') as HTMLTextAreaElement).value = SAN_CSR;
+            hide('ta');
+            expect(ids()).toEqual([]);
+        });
+    });
+
     it('keeps page order across textareas and other elements', () => {
         document.body.innerHTML = `${pre(SAN_CSR, 'a')}<textarea id="ta"></textarea>${pre(MIXED_SAN_CERT, 'b')}`;
         (document.getElementById('ta') as HTMLTextAreaElement).value = SAN_CSR;

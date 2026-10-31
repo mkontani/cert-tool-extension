@@ -1,6 +1,5 @@
 import { isContentCommand, MSG_SCAN_PAGE, type ContentCommand, type ContentReply, type PageScan } from '../page/messages';
 import { extractPemText, findPemContainers } from './detect';
-import { isShown } from './dom';
 import { createOverlay, type Anchor, type Overlay } from './overlay';
 
 /** Parses page texts into one scan each, in order (the background service worker does this in the extension). */
@@ -55,8 +54,7 @@ export function createController({ doc, parse, makeOverlay = createOverlay }: Co
         const current = ++generation;
         const ui = getOverlay();
         ui.clear();
-        // Hidden blocks are skipped, so a page cannot dress up invisible text with the extension's badge.
-        const containers = findPemContainers(doc.body ?? doc.documentElement, ui.host).filter(c => isShown(c.element));
+        const containers = findPemContainers(doc.body ?? doc.documentElement, ui.host);
         if (containers.length === 0) {
             ui.toast(NONE_ON_PAGE);
             return { found: 0 };

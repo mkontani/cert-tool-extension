@@ -1,4 +1,5 @@
 import { MAX_TEXT_LENGTH, MAX_TEXTS } from '../page/messages';
+import { isShown } from './dom';
 
 /** A page element showing one or more certificates or CSRs, and exactly those blocks' text, for parsing. */
 export interface PemContainer {
@@ -123,8 +124,8 @@ function indexText(root: Node, exclude: Node | undefined): TextIndex {
     return { text: parts.join(''), nodes, starts, textareas };
 }
 
-/** The text node holding the character at offset (binary search over node start offsets). */
-function nodeAt({ nodes, starts }: TextIndex, offset: number): Text {
+/** Index of the text node holding the character at offset (binary search over node start offsets). */
+function nodeIndexAt({ starts }: TextIndex, offset: number): number {
     let lo = 0;
     let hi = starts.length - 1;
     while (lo < hi) {
@@ -132,7 +133,33 @@ function nodeAt({ nodes, starts }: TextIndex, offset: number): Text {
         if (starts[mid] <= offset) lo = mid;
         else hi = mid - 1;
     }
-    return nodes[lo];
+    return lo;
+}
+
+/** Tells whether the page shows an element; answers are cached per element, as a block's lines usually share one. */
+type ShownCheck = (el: Element) => boolean;
+
+function cachedShown(shown: ShownCheck): ShownCheck {
+    const cache = new Map<Element, boolean>();
+    return el => {
+        const known = cache.get(el);
+        if (known !== undefined) return known;
+        const result = shown(el);
+        cache.set(el, result);
+        return result;
+    };
+}
+
+/**
+ * Whether every non-blank text node of the block is shown. Checking only the container would let a page
+ * split a certificate across hidden elements inside a visible one and have the visible element badged.
+ */
+function blockShown(index: TextIndex, first: number, last: number, shown: ShownCheck): boolean {
+    for (let i = first; i <= last; i++) {
+        const node = index.nodes[i];
+        if (node.parentElement && /\S/.test(node.data) && !shown(node.parentElement)) return false;
+    }
+    return true;
 }
 
 /** The smallest HTML element holding both text nodes; the browser's Range does this without walking every ancestor. */
@@ -153,10 +180,13 @@ interface Ordered {
     readonly tie: number;
 }
 
-function textContainers(index: TextIndex): Ordered[] {
+function textContainers(index: TextIndex, shown: ShownCheck): Ordered[] {
     const groups = new Map<HTMLElement, PemRange[]>();
     for (const range of findPemRanges(index.text)) {
-        const element = commonAncestor(nodeAt(index, range.start), nodeAt(index, range.end - 1));
+        const first = nodeIndexAt(index, range.start);
+        const last = nodeIndexAt(index, range.end - 1);
+        if (!blockShown(index, first, last, shown)) continue;
+        const element = commonAncestor(index.nodes[first], index.nodes[last]);
         if (element) groups.set(element, [...(groups.get(element) ?? []), range]);
     }
     return [...groups].flatMap(([element, ranges]) => {
@@ -165,9 +195,9 @@ function textContainers(index: TextIndex): Ordered[] {
     });
 }
 
-function textareaContainers(index: TextIndex): Ordered[] {
+function textareaContainers(index: TextIndex, shown: ShownCheck): Ordered[] {
     return index.textareas.flatMap(({ element, at }) => {
-        const text = extractPemText(element.value);
+        const text = shown(element) ? extractPemText(element.value) : '';
         return text ? [{ container: { element, text }, at, tie: 0 }] : [];
     });
 }
@@ -176,11 +206,13 @@ function textareaContainers(index: TextIndex): Ordered[] {
  * Finds the elements under root that show certificates or CSRs, in page order.
  * Each block belongs to the smallest element holding both its BEGIN and END lines, so a code viewer that puts
  * every line in its own element still yields one container, and a pasted chain in one element stays together.
- * Text inside `exclude` (the extension's own overlay), scripts and styles is ignored.
+ * Text inside `exclude` (the extension's own overlay), scripts and styles is ignored, and so are blocks the page
+ * hides, so it cannot dress up invisible text with the extension's badge.
  */
-export function findPemContainers(root: Node, exclude?: Node): PemContainer[] {
+export function findPemContainers(root: Node, exclude?: Node, shown: ShownCheck = isShown): PemContainer[] {
     const index = indexText(root, exclude);
-    return [...textContainers(index), ...textareaContainers(index)]
+    const check = cachedShown(shown);
+    return [...textContainers(index, check), ...textareaContainers(index, check)]
         .sort((a, b) => a.at - b.at || a.tie - b.tie)
         .slice(0, MAX_CONTAINERS)
         .map(o => o.container);
