@@ -4,6 +4,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-01
+
 ### Added
 - Inspect certificates and CSRs on web pages:
   - **Scan this page** (Inspector tab) badges every certificate and CSR on the current page with its name and days left, colored by validity. Hover or click a badge for subject, issuer, validity, key, signature, and extensions. A pasted chain gets one badge listing every entry.
@@ -60,7 +62,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 ### Added
 - Initial release: key pair generation (RSA, ECDSA, Ed25519), CSR generation, public key derivation, and a certificate/CSR inspector.
 
-[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.1.0...HEAD
+[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.2.0...HEAD
+[1.2.0]: https://github.com/mkontani/cert-tool-extension/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/mkontani/cert-tool-extension/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/mkontani/cert-tool-extension/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/mkontani/cert-tool-extension/releases/tag/1.0.0
