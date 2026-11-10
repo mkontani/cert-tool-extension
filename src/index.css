@@ -134,3 +134,91 @@ h1, h2, h3 {
   background: rgba(255, 255, 255, 0.05);
   color: white;
 }
+
+/* The Inspector's buttons that work on the current tab, side by side. Empty outside the extension (e.g. the GitHub Pages demo). */
+.page-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-tools:empty {
+  display: none;
+}
+
+/* A page tool's button and info icon, with the explanation in a tooltip below them. Errors go outside this box. */
+.tool-anchor {
+  position: relative;
+}
+
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tool-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+}
+
+.tool-info {
+  display: inline-flex;
+  color: #94a3b8;
+  cursor: help;
+}
+
+/*
+ * Shown after a short pause while the pointer is on the button or the icon, or while the button has keyboard focus.
+ * A mouse click does not keep it open, so it does not cover the input after the button is used.
+ */
+.tool-tip {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+  background: var(--bg-color);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s ease, visibility 0s linear 0.12s;
+}
+
+/* Bridges the gap above the tooltip, so the pointer can move onto it to read or select the text. */
+.tool-tip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.45rem;
+  height: 0.45rem;
+}
+
+.tool-row:hover + .tool-tip,
+.tool-row:has(:focus-visible) + .tool-tip,
+.tool-tip:hover {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.12s ease 0.3s, visibility 0s linear 0.3s;
+}
+
+/* Hidden with Escape until the pointer leaves or focus moves away. Must stay after the rules above, which it overrides. */
+.tool-anchor[data-dismissed] .tool-tip {
+  visibility: hidden;
+  opacity: 0;
+  transition: none;
+}

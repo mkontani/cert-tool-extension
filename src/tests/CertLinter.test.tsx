@@ -106,6 +106,12 @@ describe('CertLinter', () => {
 });
 
 describe('App navigation', () => {
+    it('opens on the Inspector tab', () => {
+        render(<App />);
+        expect(screen.getByRole('heading', { name: 'Certificate Inspector' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Inspector/ })).toHaveClass('active');
+    });
+
     it('opens the linter from the Lint tab', () => {
         render(<App />);
         fireEvent.click(screen.getByRole('button', { name: /Lint/ }));

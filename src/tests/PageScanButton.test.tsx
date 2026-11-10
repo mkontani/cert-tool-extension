@@ -30,6 +30,11 @@ describe('PageScanButton', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
+    it('explains in a tooltip what scanning does and where the menu item is', () => {
+        render(<PageScanButton api={fakeApi().typed} />);
+        expect(button()).toHaveAccessibleDescription(/marks them with badges.*Inspect certificate with Cert Tool/);
+    });
+
     it('scans the active tab, then closes the popup so the page is visible', async () => {
         const { api, typed } = fakeApi();
         const onDone = vi.fn();

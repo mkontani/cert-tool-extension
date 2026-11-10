@@ -25,6 +25,7 @@
         "downloads",
         "activeTab",
         "scripting",
-        "contextMenus"
+        "contextMenus",
+        "debugger"
     ]
 }

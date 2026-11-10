@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, AlertCircle } from 'lucide-react';
 import { inspect } from '../inspector/inspect';
 import { findPemBlocks, MAX_PEM_BLOCKS, type PemBlock } from '../inspector/pem';
 import type { InspectionResult } from '../inspector/types';
+import { chainRole, chainToPem } from '../site/display';
 import ChainSelector from './ChainSelector';
 import EntryList from './EntryList';
 import PageScanButton from './PageScanButton';
+import type { SiteCertificates } from '../site/messages';
+import SiteCertButton, { type SiteCertApi } from './SiteCertButton';
+import SiteSummary from './SiteSummary';
 
 const entryCountLabel = (count: number) => `${count} ${count === 1 ? 'entry' : 'entries'}`;
 
@@ -33,27 +37,57 @@ function inspectBlock(block: PemBlock): InspectedItem {
     }
 }
 
-export default function CertInspector() {
+const isSelfIssued = (item: InspectedItem | undefined): boolean => item?.status === 'ok' && item.result.subject === item.result.issuer;
+
+/** Leaf, Intermediate or Root for each certificate of a chain Chrome verified, which it lists leaf first. */
+const rolesOf = (items: readonly InspectedItem[]): string[] => items.map((item, i) => chainRole(i, items.length, isSelfIssued(item)));
+
+interface CertInspectorProps {
+    /** Passed to SiteCertButton; defaults to the global chrome object inside the extension. */
+    readonly siteApi?: SiteCertApi | null;
+}
+
+export default function CertInspector({ siteApi }: CertInspectorProps = {}) {
     const [inputPem, setInputPem] = useState('');
     const [items, setItems] = useState<readonly InspectedItem[]>([]);
     const [truncated, setTruncated] = useState(false);
     const [selected, setSelected] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    /** Set while the input holds the chain read from the current tab. */
+    const [site, setSite] = useState<SiteCertificates | null>(null);
+    const siteRef = useRef<HTMLDivElement>(null);
 
-    const parseInput = () => {
+    // The results start below the fold of the popup, so bring the site's chain into view once it is read.
+    useEffect(() => {
+        if (site) siteRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    }, [site]);
+
+    const parseText = (text: string) => {
         setError(null);
         setItems([]);
         setTruncated(false);
         setSelected(0);
-        if (!inputPem.trim()) return;
+        if (!text.trim()) return;
 
-        const scan = findPemBlocks(inputPem);
+        const scan = findPemBlocks(text);
         if (scan.blocks.length === 0) {
             setError('Failed to parse: Unsupported format. Please feed a CERTIFICATE or CERTIFICATE REQUEST (CSR).');
             return;
         }
         setItems(scan.blocks.map(inspectBlock));
         setTruncated(scan.truncated);
+    };
+
+    const parseInput = () => {
+        setSite(null);
+        parseText(inputPem);
+    };
+
+    const showSite = (loaded: SiteCertificates) => {
+        const pem = chainToPem(loaded.chain);
+        setInputPem(pem);
+        parseText(pem);
+        setSite(loaded);
     };
 
     const current = items[selected];
@@ -66,21 +100,30 @@ export default function CertInspector() {
                 <Search size={24} color="#06b6d4" />
                 <h2 style={{ margin: 0 }}>Certificate Inspector</h2>
             </div>
-            <PageScanButton />
+            <div className="page-tools">
+                <SiteCertButton api={siteApi} onLoad={showSite} />
+                <PageScanButton />
+            </div>
             <div style={{ marginBottom: '1.5rem' }}>
                 <label htmlFor="inspector-input">Input (Certificate or CSR)</label>
                 <textarea
                     id="inspector-input"
                     value={inputPem}
-                    onChange={(e) => setInputPem(e.target.value)}
+                    onChange={(e) => {
+                        setInputPem(e.target.value);
+                        // The input no longer holds the chain Chrome verified, so the summary and roles no longer apply.
+                        setSite(null);
+                    }}
                     placeholder="-----BEGIN CERTIFICATE-----..."
                     rows={6}
                     style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
                 />
                 <button className="btn" onClick={parseInput} style={{ marginTop: '0.5rem', width: '100%' }}>Parse</button>
             </div>
+            <div ref={siteRef}>{site && <SiteSummary site={site} endsAtRoot={items.length > 1 && isSelfIssued(items.at(-1))} />}</div>
             {items.length > 1 && (
-                <ChainSelector labels={items.map(item => item.label)} selected={selected} onSelect={setSelected} controls={OUTPUT_ID} />
+                <ChainSelector labels={items.map(item => item.label)} tags={site ? rolesOf(items) : undefined}
+                    selected={selected} onSelect={setSelected} controls={OUTPUT_ID} />
             )}
             {truncated && (
                 <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '-0.5rem 0 1rem' }}>Only the first {MAX_PEM_BLOCKS} blocks are listed.</p>

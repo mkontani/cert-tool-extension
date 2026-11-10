@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { AlertCircle, ScanSearch } from 'lucide-react';
+import { ScanSearch } from 'lucide-react';
 import { MSG_SCAN_PAGE } from '../page/messages';
 import { describeScanError, runInTab, type InjectApi } from '../page/runInTab';
+import ToolButton from './ToolButton';
 
 export interface ScanApi extends InjectApi {
     readonly tabs: Pick<typeof chrome.tabs, 'query' | 'sendMessage'>;
@@ -20,6 +21,8 @@ function extensionApi(): ScanApi | null {
     const maybe = chrome as Partial<Pick<typeof chrome, 'scripting' | 'tabs'>>;
     return maybe.scripting && maybe.tabs ? chrome : null;
 }
+
+const HINT = 'Finds certificates and CSRs on the current page and marks them with badges you can hover. You can also right-click a selected PEM and pick “Inspect certificate with Cert Tool”.';
 
 const closePopup = () => window.close();
 
@@ -49,22 +52,7 @@ export default function PageScanButton({ api = extensionApi(), onDone = closePop
     };
 
     return (
-        <div style={{ marginBottom: '1.5rem' }}>
-            <button className="btn-secondary" onClick={scan} disabled={busy}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '8px', cursor: busy ? 'progress' : 'pointer' }}>
-                <ScanSearch size={16} aria-hidden="true" />
-                {busy ? 'Scanning…' : 'Scan this page'}
-            </button>
-            <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.4rem 0 0' }}>
-                Finds certificates and CSRs on the current page and marks them with badges you can hover. You can also right-click a selected PEM and pick “Inspect certificate with Cert Tool”.
-            </p>
-            {error && (
-                <div role="alert" style={{
-                    marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '8px', color: '#fca5a5',
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem',
-                }}><AlertCircle size={16} style={{ flex: 'none' }} /> {error}</div>
-            )}
-        </div>
+        <ToolButton icon={<ScanSearch size={16} aria-hidden="true" />} label="Scan this page" busyLabel="Scanning…"
+            busy={busy} hint={HINT} error={error} onClick={scan} />
     );
 }
