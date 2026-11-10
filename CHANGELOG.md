@@ -4,6 +4,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-11
+
 ### Added
 - Inspector: **Show this site's certificate** loads the certificate chain Chrome verified for the site in the current tab, from the leaf to the root.
   - Each certificate is labeled Leaf, Intermediate, or Root. A summary shows the TLS version, key exchange group, and cipher, and whether Chrome accepted the certificate. It also notes when Chrome's chain stops below the root.
@@ -14,6 +16,9 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 ### Changed
 - The popup now opens on the Inspector tab instead of Gen KeyPair. The order of the tabs is unchanged.
 - Inspector: the explanations under **Scan this page** and **Show this site's certificate** moved into tooltips, so the buttons take one row. Hover a button or its ⓘ icon, or focus it with the keyboard, to read one. Screen readers read it as the button's description.
+
+### Security
+- Updated node-forge to 1.4.3. It fixes Ed25519 signature verification accepting small-order public keys (GHSA-6889-vf6x-f3g5), two TLS client crashes (GHSA-w4xr-hqv8-ch44, GHSA-j8rw-jp99-435v), and a ReDoS in `forge.http` (GHSA-6cv4-p8m7-4r25). Cert Tool uses none of these parts of node-forge, so it was not affected.
 
 ## [1.2.0] - 2026-11-01
 
@@ -73,7 +78,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 ### Added
 - Initial release: key pair generation (RSA, ECDSA, Ed25519), CSR generation, public key derivation, and a certificate/CSR inspector.
 
-[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.2.0...HEAD
+[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.3.0...HEAD
+[1.3.0]: https://github.com/mkontani/cert-tool-extension/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/mkontani/cert-tool-extension/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/mkontani/cert-tool-extension/compare/1.0.1...1.1.0
 [1.0.1]: https://github.com/mkontani/cert-tool-extension/compare/1.0.0...1.0.1

@@ -37,6 +37,8 @@ View detailed information about certificates and signing requests.
 - **This Site's Certificate**: Click *Show this site's certificate* to load the chain Chrome verified for the site in the current tab, from the leaf through the intermediates to the root, each labeled Leaf, Intermediate, or Root. A summary shows the TLS version, key exchange group, and cipher, and whether Chrome accepted the certificate. The chain is also put in the input as PEM, so you can copy it or lint it.
 - **How the site's certificate is read**: Chrome gives extensions no direct way to read a page's certificate, so Cert Tool briefly attaches Chrome's debugger to the tab (the `debugger` permission; Chrome shows a "started debugging this browser" bar meanwhile). It has the tab send a HEAD request without cookies to the site's home page, or to the page on the same site that the home page redirects to. Redirects to other sites are not followed, and the address of the page you are on is not sent. It then reads the certificate Chrome received for that response and detaches. The page's content is not read or changed. For a few sites Chrome's chain stops below the root; the summary says so.
 
+![This site's certificate](screenshots/store/7-site-cert.png)
+
 ### 5. Certificate Linter
 Check whether a server certificate is safe to deploy, similar to [zlint](https://github.com/zmap/zlint) but running entirely in the browser.
 ![Certificate Linter](screenshots/store/1-linter.png)
@@ -56,7 +58,7 @@ Check certificates and CSRs pasted into docs, issues, or CI logs without copying
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Privacy
-Cert Tool runs entirely in your browser and sends nothing anywhere. See [PRIVACY.md](PRIVACY.md) for details.
+Cert Tool runs entirely in your browser and sends nothing to its developer or anyone else. The only request it causes is a HEAD request without cookies to the site you are visiting, when you click *Show this site's certificate*. See [PRIVACY.md](PRIVACY.md) for details.
 
 ## Installation
 
