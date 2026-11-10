@@ -41,7 +41,8 @@ describe('registerBackground', () => {
         registerBackground(typed);
         expect(api.runtime.onInstalled.addListener).toHaveBeenCalledOnce();
         expect(api.contextMenus.onClicked.addListener).toHaveBeenCalledOnce();
-        expect(api.runtime.onMessage.addListener).toHaveBeenCalledOnce();
+        // One for the content script's page texts, one for the popup's site certificate requests.
+        expect(api.runtime.onMessage.addListener).toHaveBeenCalledTimes(2);
     });
 });
 

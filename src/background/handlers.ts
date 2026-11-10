@@ -1,6 +1,7 @@
 import { inspectTexts } from '../page/inspectTexts';
 import { isInspectTextsRequest, MAX_TEXT_LENGTH, MSG_INSPECT_SELECTION, type ContentCommand, type PageScan } from '../page/messages';
 import { describeScanError, runInTab, type InjectApi } from '../page/runInTab';
+import { createSiteCertsListener, type DebuggerApi } from './siteCerts';
 
 export const MENU_INSPECT_SELECTION = 'cert-tool-inspect-selection';
 /** The toolbar title from manifest.json, restored once a failure is cleared. */
@@ -8,7 +9,7 @@ const DEFAULT_TITLE = 'Cert Tool';
 const FAILURE_BADGE_COLOR = '#dc2626';
 
 /** The parts of the chrome API the background uses, so tests can pass fakes. */
-export interface BackgroundApi extends InjectApi {
+export interface BackgroundApi extends InjectApi, DebuggerApi {
     readonly runtime: Pick<typeof chrome.runtime, 'id' | 'onInstalled' | 'onMessage'>;
     readonly contextMenus: Pick<typeof chrome.contextMenus, 'removeAll' | 'create' | 'onClicked'>;
     readonly action: Pick<typeof chrome.action, 'setBadgeText' | 'setBadgeBackgroundColor' | 'setTitle'>;
@@ -76,4 +77,5 @@ export function registerBackground(api: BackgroundApi): void {
     });
     api.contextMenus.onClicked.addListener((info, tab) => { void onMenuClick(api, info, tab); });
     api.runtime.onMessage.addListener(createInspectListener(api.runtime.id));
+    api.runtime.onMessage.addListener(createSiteCertsListener(api, api.runtime.id));
 }

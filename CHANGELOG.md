@@ -4,6 +4,17 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+- Inspector: **Show this site's certificate** loads the certificate chain Chrome verified for the site in the current tab, from the leaf to the root.
+  - Each certificate is labeled Leaf, Intermediate, or Root. A summary shows the TLS version, key exchange group, and cipher, and whether Chrome accepted the certificate. It also notes when Chrome's chain stops below the root.
+  - The chain is put in the input as PEM, so it can be copied or linted.
+  - Uses the new `debugger` permission, which shows the install warning "Access the page debugger backend". Chrome asks existing users to approve it when they update. The debugger is attached only while the certificate is read, and Chrome shows a "started debugging this browser" bar meanwhile.
+  - To read the certificate, the tab sends a HEAD request without cookies to the site's home page, or to the page on the same site the home page redirects to. Redirects to other sites are not followed, and the address of the page you are on is not sent. The page's content is not read or changed.
+
+### Changed
+- The popup now opens on the Inspector tab instead of Gen KeyPair. The order of the tabs is unchanged.
+- Inspector: the explanations under **Scan this page** and **Show this site's certificate** moved into tooltips, so the buttons take one row. Hover a button or its ⓘ icon, or focus it with the keyboard, to read one. Screen readers read it as the button's description.
+
 ## [1.2.0] - 2026-11-01
 
 ### Added

@@ -9,7 +9,7 @@ import CertLinter from './components/CertLinter';
 type Tab = 'keygen' | 'csr' | 'pubkey' | 'inspector' | 'lint';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('keygen');
+  const [activeTab, setActiveTab] = useState<Tab>('inspector');
 
   return (
     <div style={{ padding: '1.5rem' }}>
