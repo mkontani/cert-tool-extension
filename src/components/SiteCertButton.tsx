@@ -24,7 +24,7 @@ function extensionApi(): SiteCertApi | null {
 /** True for a tab URL that cannot have a certificate (http:, file:, chrome: ...); false when it is HTTPS or unknown. */
 const isKnownNotHttps = (url: string | undefined): boolean => url !== undefined && !url.startsWith('https://');
 
-const HINT = 'Shows the chain Chrome verified for the site in the current tab, from the leaf to the root. To read it, the tab sends the site a HEAD request without cookies, and Chrome briefly shows a “started debugging this browser” bar.';
+const HINT = 'Shows the chain Chrome verified for the site in the current tab, from the leaf to the root. To read it, the tab sends the site a HEAD request without cookies, or Cert Tool sends it itself when another extension’s frame on the page blocks the tab. Chrome briefly shows a “started debugging this browser” bar.';
 
 const failureMessage = (message: string) => `Couldn't read this site's certificate: ${message}`;
 const failed = (message: string): SiteCertsReply => ({ ok: false, error: failureMessage(message) });

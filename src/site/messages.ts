@@ -41,7 +41,14 @@ export interface SiteCertificates {
     readonly connection: SiteConnection;
     /** Whether Chrome accepted the certificate; false after the user clicked past a certificate warning. */
     readonly trusted: boolean;
+    /**
+     * Whose connection the certificate and connection details come from: the tab's, or Cert Tool's own,
+     * used when another extension's frame on the page keeps the debugger off the tab.
+     */
+    readonly via: SiteConnectionSource;
 }
+
+export type SiteConnectionSource = 'tab' | 'cert-tool';
 
 export type SiteCertsReply =
     | { readonly ok: true; readonly site: SiteCertificates }
@@ -71,7 +78,7 @@ export const isHttpsOrigin = (value: unknown): value is string => isField(value)
 
 function isSiteCertificates(value: unknown): value is SiteCertificates {
     return isRecord(value) && isHttpsOrigin(value.origin) && isChain(value.chain) && isConnection(value.connection)
-        && typeof value.trusted === 'boolean';
+        && typeof value.trusted === 'boolean' && (value.via === 'tab' || value.via === 'cert-tool');
 }
 
 export function isFetchSiteCertsRequest(msg: unknown): msg is FetchSiteCertsRequest {

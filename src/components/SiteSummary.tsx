@@ -41,6 +41,11 @@ export default function SiteSummary({ site, endsAtRoot }: SiteSummaryProps) {
                 <Lock size={16} color="#06b6d4" aria-hidden="true" style={{ flex: 'none' }} /> {host}
             </div>
             <div style={{ color: '#cbd5e1', marginTop: '0.25rem' }}>{describeConnection(site.connection)}</div>
+            {site.via === 'cert-tool' && (
+                <div style={{ color: '#94a3b8', marginTop: '0.25rem' }}>
+                    Read over Cert Tool's own connection to the site, since another extension's frame on this page keeps Cert Tool out of the tab.
+                </div>
+            )}
             <TrustNote site={site} endsAtRoot={endsAtRoot} />
         </section>
     );

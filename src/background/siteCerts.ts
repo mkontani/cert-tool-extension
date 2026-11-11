@@ -1,10 +1,8 @@
-import { headRequestId, MAX_HEAD_REQUESTS, NO_CERTIFICATE, readChain, readContextId, readMainFrame, readResponseSecurity, responseRequestId } from '../site/cdp';
+import { NO_CERTIFICATE, readChain, readContextId, readMainFrame, readResponseSecurity } from '../site/cdp';
 import { isFetchSiteCertsRequest, isHttpsOrigin, NOT_HTTPS, type SiteCertificates, type SiteCertsReply } from '../site/messages';
+import { send, SITE_CERTS_TIMEOUT_MS, withDebugger, type DebuggerApi, type Target } from './debuggerSession';
+import { fetchOverOwnConnection, type OwnPage } from './ownConnection';
 
-/** The DevTools protocol version chrome.debugger.attach asks for; every Chrome that runs this extension speaks it. */
-export const DEBUGGER_PROTOCOL_VERSION = '1.3';
-/** The whole read takes well under a second; this only matters when the site or Chrome never answers. */
-export const SITE_CERTS_TIMEOUT_MS = 10_000;
 const WORLD_NAME = 'Cert Tool';
 
 /**
@@ -28,53 +26,19 @@ export const HEAD_REQUEST = `(async () => {
     }
 })()`;
 
-export interface DebuggerApi {
-    readonly debugger: Pick<typeof chrome.debugger, 'attach' | 'detach' | 'sendCommand' | 'onEvent'>;
-}
-
-type Target = chrome.debugger.Debuggee;
-type EventListener = Parameters<typeof chrome.debugger.onEvent.addListener>[0];
-
-/**
- * Collects the responses to HEAD requests in one tab, from which the connection details are read.
- * Matching by request id keeps the page's own traffic, which may be on another connection, out of the result.
- */
-function watchHeadResponses(api: DebuggerApi, tabId: number) {
-    const headIds = new Set<string>();
-    const events: unknown[] = [];
-    const listener: EventListener = (source, method, params) => {
-        if (source.tabId !== tabId) return;
-        if (method === 'Network.requestWillBeSent') {
-            const id = headRequestId(params);
-            if (id !== undefined && headIds.size < MAX_HEAD_REQUESTS) headIds.add(id);
-        } else if (method === 'Network.responseReceived') {
-            const id = responseRequestId(params);
-            if (id !== undefined && headIds.has(id) && events.length < MAX_HEAD_REQUESTS) events.push(params);
-        }
-    };
-    api.debugger.onEvent.addListener(listener);
-    return { events, stop: () => api.debugger.onEvent.removeListener(listener) };
-}
-
 async function readSite(api: DebuggerApi, target: Target, responses: readonly unknown[]): Promise<SiteCertificates> {
-    const send = (method: string, params?: Record<string, unknown>) => api.debugger.sendCommand(target, method, params);
-    const frame = readMainFrame(await send('Page.getFrameTree'));
+    const command = send(api, target);
+    const frame = readMainFrame(await command('Page.getFrameTree'));
     if (!isHttpsOrigin(frame.origin)) throw new Error(NOT_HTTPS);
-    await send('Network.enable');
+    await command('Network.enable');
     // A service worker could answer from its cache, and such responses carry no certificate.
-    await send('Network.setBypassServiceWorker', { bypass: true });
-    const contextId = readContextId(await send('Page.createIsolatedWorld', { frameId: frame.id, worldName: WORLD_NAME }));
-    await send('Runtime.evaluate', { contextId, expression: HEAD_REQUEST, awaitPromise: true, returnByValue: true });
-    const chain = readChain(await send('Network.getCertificate', { origin: frame.origin }));
+    await command('Network.setBypassServiceWorker', { bypass: true });
+    const contextId = readContextId(await command('Page.createIsolatedWorld', { frameId: frame.id, worldName: WORLD_NAME }));
+    await command('Runtime.evaluate', { contextId, expression: HEAD_REQUEST, awaitPromise: true, returnByValue: true });
+    const chain = readChain(await command('Network.getCertificate', { origin: frame.origin }));
     const security = readResponseSecurity(responses, frame.origin);
     if (!security) throw new Error(NO_CERTIFICATE);
-    return { origin: frame.origin, chain, ...security };
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Chrome took too long to answer.')), ms); });
-    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+    return { origin: frame.origin, chain, ...security, via: 'tab' };
 }
 
 /**
@@ -84,29 +48,52 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  */
 export async function fetchSiteCertificates(api: DebuggerApi, tabId: number, timeoutMs = SITE_CERTS_TIMEOUT_MS): Promise<SiteCertificates> {
     const target = { tabId };
-    await api.debugger.attach(target, DEBUGGER_PROTOCOL_VERSION);
-    const responses = watchHeadResponses(api, tabId);
-    try {
-        return await withTimeout(readSite(api, target, responses.events), timeoutMs);
-    } finally {
-        responses.stop();
-        // Detaching also hides Chrome's "started debugging this browser" bar.
-        await api.debugger.detach(target).catch((e: unknown) => console.warn('Cert Tool: could not detach the debugger', e));
-    }
+    return withDebugger(api, target, timeoutMs, responses => readSite(api, target, responses));
 }
 
-/** chrome:// pages, the Chrome Web Store and other extensions' pages reject the debugger with these messages. */
-const RESTRICTED_PAGE = /cannot access|cannot attach/i;
+/**
+ * Chrome refuses the debugger for a whole tab while any frame in it belongs to another extension,
+ * such as the bar Vimium adds the first time it opens on a page, which stays until the page reloads.
+ * Checked before RESTRICTED_PAGE, which also matches it.
+ */
+const OTHER_EXTENSION_FRAME = /of different extension/i;
+/** Pages Chrome keeps the debugger off, such as chrome:// pages and the Chrome Web Store, are rejected with these messages. */
+const RESTRICTED_PAGE = /cannot access|cannot attach|cannot be scripted/i;
 const ALREADY_ATTACHED = /already attached/i;
 /** The user pressed Cancel on Chrome's debugging bar, or the tab closed, while the read was under way. */
 const DETACHED = /not attached/i;
 const OWN_MESSAGES: readonly string[] = [NOT_HTTPS, NO_CERTIFICATE];
 
+const messageOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/**
+ * Reads the certificate of the tab's site from the tab itself, or, when another extension's frame keeps the debugger off the tab,
+ * over Cert Tool's own connection from the page that asked. If that fails too, the tab's error stands, since it says what to do.
+ */
+export async function readSiteCertificates(api: DebuggerApi, tabId: number, page: OwnPage, timeoutMs = SITE_CERTS_TIMEOUT_MS): Promise<SiteCertificates> {
+    try {
+        return await fetchSiteCertificates(api, tabId, timeoutMs);
+    } catch (e: unknown) {
+        if (!OTHER_EXTENSION_FRAME.test(messageOf(e))) throw e;
+        try {
+            return await fetchOverOwnConnection(api, tabId, page, timeoutMs);
+        } catch (ownError: unknown) {
+            console.warn('Cert Tool: could not read the site certificate over its own connection either', ownError);
+            // The tab is not a web page on HTTPS after all, e.g. another extension's own page.
+            if (messageOf(ownError) === NOT_HTTPS) throw ownError;
+            throw e;
+        }
+    }
+}
+
 /** A message for the user when the certificate cannot be read. */
 export function describeSiteCertsError(e: unknown): string {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = messageOf(e);
+    if (OTHER_EXTENSION_FRAME.test(message)) {
+        return "Another extension has added its own frame to this page, such as a bar or panel it shows over the page, so Chrome blocks Cert Tool from the tab, and Cert Tool couldn't read the site's certificate over its own connection either. Reload the page, then click this button again before using that extension, or turn that extension off for this site.";
+    }
     if (RESTRICTED_PAGE.test(message)) {
-        return "Cert Tool can't read the certificate of this page. Browser pages, the Chrome Web Store, and other extensions' pages are off-limits to extensions.";
+        return "Cert Tool can't read the certificate of this page. Browser pages and the Chrome Web Store are off-limits to extensions.";
     }
     if (ALREADY_ATTACHED.test(message)) return 'Cert Tool is already reading this tab. Try again in a moment.';
     if (DETACHED.test(message)) return 'Reading the certificate was canceled.';
@@ -121,9 +108,11 @@ export function describeSiteCertsError(e: unknown): string {
 export function createSiteCertsListener(api: DebuggerApi, extensionId: string) {
     const extensionOrigin = `chrome-extension://${extensionId}/`;
     return (msg: unknown, sender: chrome.runtime.MessageSender, sendResponse: (reply: SiteCertsReply) => void): boolean => {
-        const fromExtensionPage = sender.id === extensionId && sender.url?.startsWith(extensionOrigin) === true;
+        const url = sender.url;
+        const fromExtensionPage = sender.id === extensionId && url !== undefined && url.startsWith(extensionOrigin);
         if (!fromExtensionPage || !isFetchSiteCertsRequest(msg)) return false;
-        fetchSiteCertificates(api, msg.tabId).then(
+        const page: OwnPage = { url, tabId: sender.tab?.id };
+        readSiteCertificates(api, msg.tabId, page).then(
             site => sendResponse({ ok: true, site }),
             (e: unknown) => {
                 console.warn('Cert Tool: could not read the site certificate', e);
