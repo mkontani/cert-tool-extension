@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { headRequestId, readChain, readContextId, readMainFrame, readResponseSecurity, responseRequestId, NO_CERTIFICATE, UNEXPECTED } from '../../site/cdp';
+import { headRequestId, lastResponseUrl, originOf, readChain, readPausedRequest, readContextId, readMainFrame, readResponseSecurity, responseRequestId, NO_CERTIFICATE, UNEXPECTED } from '../../site/cdp';
 import { MAX_CERT_BASE64_LENGTH, MAX_CHAIN_LENGTH } from '../../site/messages';
 import { frameTree, requestWillBeSent, responseReceived, SITE_CHAIN, SITE_ORIGIN } from '../siteFixtures';
 
@@ -109,5 +109,50 @@ describe('responseRequestId', () => {
         expect(responseRequestId(responseReceived())).toBe('1.1');
         expect(responseRequestId({ requestId: 3 })).toBeUndefined();
         expect(responseRequestId(null)).toBeUndefined();
+    });
+});
+
+describe('lastResponseUrl', () => {
+    it('reads where the last response came from, e.g. the page a redirect ended at', () => {
+        const redirected = responseReceived({ url: `${SITE_ORIGIN}/wiki/Main_Page`, securityDetails: undefined });
+        expect(lastResponseUrl([responseReceived(), redirected])).toBe(`${SITE_ORIGIN}/wiki/Main_Page`);
+    });
+
+    it.each([
+        ['no response', []],
+        ['a URL that is not text', [responseReceived({ url: 7 })]],
+        ['an implausibly long URL', [responseReceived({ url: `${SITE_ORIGIN}/${'a'.repeat(10_000)}` })]],
+        ['no response object', [{ requestId: '1.1' }]],
+    ])('finds nothing for %s', (_name, events) => {
+        expect(lastResponseUrl(events)).toBeUndefined();
+    });
+});
+
+describe('originOf', () => {
+    it('reads the origin of a URL, and nothing of anything else', () => {
+        expect(originOf('https://www.example.com/a?b#c')).toBe('https://www.example.com');
+        expect(originOf('not a url')).toBeUndefined();
+        expect(originOf(42)).toBeUndefined();
+    });
+});
+
+describe('readPausedRequest', () => {
+    it('reads the id and URL of a held request', () => {
+        expect(readPausedRequest({ requestId: 'interception-1', request: { url: 'https://www.example.com/', method: 'HEAD' } }))
+            .toEqual({ id: 'interception-1', url: 'https://www.example.com/' });
+    });
+
+    it.each([
+        ['no request', { requestId: 'interception-1' }],
+        ['a URL that is not text', { requestId: 'interception-1', request: { url: 7 } }],
+    ])('still reads the id of %s, so the request can be answered', (_name, params) => {
+        expect(readPausedRequest(params)).toEqual({ id: 'interception-1', url: undefined });
+    });
+
+    it.each([
+        ['no id', { request: { url: 'https://www.example.com/' } }],
+        ['nothing', undefined],
+    ])('finds nothing in %s', (_name, params) => {
+        expect(readPausedRequest(params)).toBeUndefined();
     });
 });

@@ -52,13 +52,21 @@ export interface ResponseSecurity {
     readonly trusted: boolean;
 }
 
-function originOf(url: unknown): string | undefined {
+/** The origin of a URL Chrome reported, e.g. "https://www.example.com"; undefined when it is not a URL. */
+export function originOf(url: unknown): string | undefined {
     if (typeof url !== 'string' || url.length > MAX_FIELD_LENGTH * 32) return undefined;
     try {
         return new URL(url).origin;
     } catch {
         return undefined; // Not a URL, so not a response from the site.
     }
+}
+
+/** Where the last response came from, e.g. the page a redirect ended at; undefined when Chrome reported none. */
+export function lastResponseUrl(events: readonly unknown[]): string | undefined {
+    const params = events.at(-1);
+    const response = isRecord(params) ? params.response : undefined;
+    return isRecord(response) && originOf(response.url) !== undefined ? response.url as string : undefined;
 }
 
 function readSecurity(params: unknown, origin: string): ResponseSecurity | undefined {
@@ -99,3 +107,17 @@ export function headRequestId(params: unknown): string | undefined {
 
 /** The id of the request a Network.responseReceived event answers. */
 export const responseRequestId = (params: unknown): string | undefined => (isRecord(params) ? requestIdOf(params) : undefined);
+
+export interface PausedRequest {
+    readonly id: string;
+    /** Undefined when Chrome did not say where the request goes; it still has to be answered. */
+    readonly url: string | undefined;
+}
+
+/** The request a Fetch.requestPaused event holds; undefined when there is no id to answer it by. */
+export function readPausedRequest(params: unknown): PausedRequest | undefined {
+    const id = isRecord(params) ? requestIdOf(params) : undefined;
+    if (id === undefined) return undefined;
+    const url = isRecord(params) && isRecord(params.request) && typeof params.request.url === 'string' ? params.request.url : undefined;
+    return { id, url };
+}

@@ -5,7 +5,7 @@ import SiteCertButton, { type SiteCertApi } from '../components/SiteCertButton';
 import { MSG_FETCH_SITE_CERTS, NOT_HTTPS } from '../site/messages';
 import { SITE_CHAIN, SITE_ORIGIN } from './siteFixtures';
 
-const site = { origin: SITE_ORIGIN, chain: [...SITE_CHAIN], connection: { protocol: 'TLS 1.3', keyExchange: '', cipher: 'AES_128_GCM' }, trusted: true };
+const site = { origin: SITE_ORIGIN, chain: [...SITE_CHAIN], connection: { protocol: 'TLS 1.3', keyExchange: '', cipher: 'AES_128_GCM' }, trusted: true, via: 'tab' };
 
 function fakeApi(options: { tabs?: { id?: number; url?: string }[]; reply?: () => Promise<unknown> } = {}) {
     const api = {
@@ -30,7 +30,7 @@ describe('SiteCertButton', () => {
 
     it('explains in a tooltip what reading the certificate involves', () => {
         render(<SiteCertButton api={fakeApi().typed} onLoad={() => { }} />);
-        expect(button()).toHaveAccessibleDescription(/HEAD request without cookies.*started debugging this browser/);
+        expect(button()).toHaveAccessibleDescription(/HEAD request without cookies.*another extension.s frame.*started debugging this browser/);
     });
 
     it("asks the background worker for the active tab's chain", async () => {

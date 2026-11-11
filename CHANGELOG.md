@@ -4,7 +4,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
-## [1.3.0] - 2026-11-11
+## [1.3.0] - 2026-11-12
 
 ### Added
 - Inspector: **Show this site's certificate** loads the certificate chain Chrome verified for the site in the current tab, from the leaf to the root.
@@ -12,6 +12,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
   - The chain is put in the input as PEM, so it can be copied or linted.
   - Uses the new `debugger` permission, which shows the install warning "Access the page debugger backend". Chrome asks existing users to approve it when they update. The debugger is attached only while the certificate is read, and Chrome shows a "started debugging this browser" bar meanwhile.
   - To read the certificate, the tab sends a HEAD request without cookies to the site's home page, or to the page on the same site the home page redirects to. Redirects to other sites are not followed, and the address of the page you are on is not sent. The page's content is not read or changed.
+  - Chrome does not let an extension debug a tab while another extension's frame is in it, such as the bar Vimium shows once it has been used on a page. Cert Tool then reads the certificate over its own connection: it attaches the debugger to its own popup and sends the HEAD request to the site from there, without cookies or a referrer, and blocks redirects to other sites. The summary notes when the connection was Cert Tool's own.
+  - A few sites refuse requests that do not come from their own pages, for example with `Cross-Origin-Resource-Policy: same-origin`. If such a site also has another extension's frame on it, the button explains this and suggests reloading the page.
 
 ### Changed
 - The popup now opens on the Inspector tab instead of Gen KeyPair. The order of the tabs is unchanged.

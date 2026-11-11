@@ -1,7 +1,8 @@
 import { inspectTexts } from '../page/inspectTexts';
 import { isInspectTextsRequest, MAX_TEXT_LENGTH, MSG_INSPECT_SELECTION, type ContentCommand, type PageScan } from '../page/messages';
 import { describeScanError, runInTab, type InjectApi } from '../page/runInTab';
-import { createSiteCertsListener, type DebuggerApi } from './siteCerts';
+import type { DebuggerApi } from './debuggerSession';
+import { createSiteCertsListener } from './siteCerts';
 
 export const MENU_INSPECT_SELECTION = 'cert-tool-inspect-selection';
 /** The toolbar title from manifest.json, restored once a failure is cleared. */

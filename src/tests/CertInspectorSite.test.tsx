@@ -12,7 +12,7 @@ const connection = { protocol: 'TLS 1.3', keyExchange: '', keyExchangeGroup: 'X2
 function fakeApi(site: Record<string, unknown> = {}): SiteCertApi {
     return {
         tabs: { query: vi.fn(() => Promise.resolve([{ id: 4, url: 'https://www.example.com/' }])) },
-        runtime: { sendMessage: vi.fn(() => Promise.resolve({ ok: true, site: { origin: SITE_ORIGIN, chain: [...SITE_CHAIN], connection, trusted: true, ...site } })) },
+        runtime: { sendMessage: vi.fn(() => Promise.resolve({ ok: true, site: { origin: SITE_ORIGIN, chain: [...SITE_CHAIN], connection, trusted: true, via: 'tab', ...site } })) },
     } as unknown as SiteCertApi;
 }
 
@@ -53,6 +53,7 @@ describe("CertInspector with the current site's certificate", () => {
         const summary = await showSite();
         expect(summary).toHaveTextContent('TLS 1.3 · X25519MLKEM768 · AES_128_GCM');
         expect(summary).toHaveTextContent('Verified by Chrome, from the leaf up to a root it trusts.');
+        expect(summary).not.toHaveTextContent("Cert Tool's own connection");
         expect(within(summary).queryByRole('alert')).toBeNull();
     });
 
@@ -60,6 +61,12 @@ describe("CertInspector with the current site's certificate", () => {
         const summary = await showSite({ chain: [LEAF_B64, INTERMEDIATE_B64] });
         expect(summary).toHaveTextContent('Verified by Chrome. Its chain for this site stops below the root');
         expect(chainButtons().map(b => b.getAttribute('aria-label'))).toEqual(['1: www.example.com (leaf)', '2: Example Issuing CA (intermediate)']);
+    });
+
+    it("says so when the connection was Cert Tool's own, not the tab's", async () => {
+        const summary = await showSite({ via: 'cert-tool' });
+        expect(summary).toHaveTextContent("Read over Cert Tool's own connection to the site");
+        expect(summary).toHaveTextContent("another extension's frame on this page");
     });
 
     it('warns when Chrome did not accept the certificate', async () => {
