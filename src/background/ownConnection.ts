@@ -6,7 +6,7 @@
  */
 import { lastResponseUrl, NO_CERTIFICATE, originOf, readChain, readPausedRequest, readResponseSecurity } from '../site/cdp';
 import { isHttpsOrigin, NOT_HTTPS, type SiteCertificates } from '../site/messages';
-import { isFrom, send, SITE_CERTS_TIMEOUT_MS, withDebugger, type DebuggerApi, type EventListener, type Target } from './debuggerSession';
+import { isFrom, send, SITE_CERTS_TIMEOUT_MS, withDebugger, type DebuggerApi, type EventListener, type Session, type Target } from './debuggerSession';
 
 /** The extension page that asked for the read: its address, and its tab when it is open in one rather than as the popup. */
 export interface OwnPage {
@@ -50,6 +50,8 @@ function ownTarget(targets: readonly TargetInfo[], page: OwnPage): Target {
 /**
  * Lets through only the page's requests to the site, so a redirect to another site is never followed.
  * The Fetch domain holds each web request until it is answered here, so every one gets an answer, even one Chrome describes oddly.
+ * Its commands are not tied to the read's lifetime: a held request must be answered even after the read stopped,
+ * and the guard is removed as soon as the debugger is detached, so it never answers into a later read.
  */
 function allowOnlySite(api: DebuggerApi, target: Target, origin: string) {
     const command = send(api, target);
@@ -75,8 +77,7 @@ function normalized(url: string | undefined): string | undefined {
     }
 }
 
-async function readOverOwnConnection(api: DebuggerApi, target: Target, origin: string, responses: readonly unknown[]): Promise<SiteCertificates> {
-    const command = send(api, target);
+async function readOverOwnConnection(origin: string, { responses, command }: Session): Promise<SiteCertificates> {
     const head = (url: string) => command('Runtime.evaluate', { expression: ownPageHead(url), awaitPromise: true, returnByValue: true });
     await command('Network.enable');
     await command('Fetch.enable', { patterns: HELD_REQUESTS });
@@ -98,7 +99,7 @@ export async function fetchOverOwnConnection(api: DebuggerApi, tabId: number, pa
     const target = ownTarget(targets, page);
     const guard = allowOnlySite(api, target, origin);
     try {
-        return await withDebugger(api, target, timeoutMs, responses => readOverOwnConnection(api, target, origin, responses));
+        return await withDebugger(api, target, timeoutMs, session => readOverOwnConnection(origin, session));
     } finally {
         guard.stop();
     }

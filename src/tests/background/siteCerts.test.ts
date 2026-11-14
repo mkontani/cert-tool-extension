@@ -78,6 +78,21 @@ function fakeApi(options: FakeOptions = {}) {
     return { api, typed: api as unknown as DebuggerApi, methods, calls, emit };
 }
 
+/**
+ * Makes the HEAD request hang until the returned function is called, as when Chrome answers only after the read ran out of time.
+ * Every other command answers at once, as fakeApi's defaults would.
+ */
+function holdHead(api: ReturnType<typeof fakeApi>['api']): () => void {
+    let answer = () => { };
+    const results: Record<string, unknown> = { 'Page.getFrameTree': frameTree(), 'Page.createIsolatedWorld': { executionContextId: 31 } };
+    api.debugger.sendCommand.mockImplementation(((_t: Source, method: string) =>
+        (method === 'Runtime.evaluate' ? new Promise(resolve => { answer = () => resolve({}); }) : Promise.resolve(results[method] ?? {}))) as never);
+    return () => answer();
+}
+
+/** Lets the continuation of a settled command run. */
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+
 let consoleWarn: ReturnType<typeof vi.spyOn>;
 beforeEach(() => { consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => { }); });
 afterEach(() => { consoleWarn.mockRestore(); });
@@ -217,6 +232,17 @@ describe('fetchSiteCertificates', () => {
             method === 'Runtime.evaluate' ? new Promise(() => { }) : Promise.resolve(method === 'Page.getFrameTree' ? frameTree() : { executionContextId: 31 }));
         await expect(fetchSiteCertificates(typed, TAB, 10)).rejects.toThrow('Chrome took too long to answer.');
         expect(api.debugger.detach).toHaveBeenCalledOnce();
+    });
+
+    it('stops a read that ran out of time, so it cannot send commands into a later read of the same tab', async () => {
+        const { api, typed, methods } = fakeApi();
+        const answerHead = holdHead(api);
+        await expect(fetchSiteCertificates(typed, TAB, 10)).rejects.toThrow('Chrome took too long to answer.');
+        expect(methods().at(-1)).toBe('Runtime.evaluate'); // Waiting for the page's request when time ran out.
+        const sent = methods().length;
+        answerHead();
+        await settle();
+        expect(methods().slice(sent)).toEqual([]);
     });
 
     it('does not detach when it could not attach', async () => {
@@ -423,6 +449,17 @@ describe('readSiteCertificates', () => {
                 (method === 'Runtime.evaluate' ? new Promise(() => { }) : Promise.resolve({}))) as never);
             await expect(readSiteCertificates(typed, TAB, popup, 10)).rejects.toThrow(OTHER_EXTENSION_FRAME);
             expect(api.debugger.detach).toHaveBeenCalledWith({ targetId: POPUP_TARGET });
+        });
+
+        it('stops a read that ran out of time before it asks the site again or for the certificate', async () => {
+            const { api, typed, methods } = fakeApi({ attach: blockedTab });
+            const answerHead = holdHead(api);
+            await expect(readSiteCertificates(typed, TAB, popup, 10)).rejects.toThrow(OTHER_EXTENSION_FRAME);
+            expect(methods().at(-1)).toBe('Runtime.evaluate'); // Waiting for the request when time ran out.
+            const sent = methods().length;
+            answerHead();
+            await settle();
+            expect(methods().slice(sent)).toEqual([]);
         });
 
         it('removes its event listener after a successful read', async () => {

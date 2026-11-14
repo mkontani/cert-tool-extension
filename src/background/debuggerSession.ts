@@ -17,8 +17,21 @@ export type EventListener = Parameters<typeof chrome.debugger.onEvent.addListene
 export const isFrom = (source: Target, target: Target): boolean =>
     (target.tabId !== undefined ? source.tabId === target.tabId : source.targetId !== undefined && source.targetId === target.targetId);
 
-export const send = (api: DebuggerApi, target: Target) => (method: string, params?: Record<string, unknown>) =>
-    api.debugger.sendCommand(target, method, params);
+/** A DevTools protocol command to the target Cert Tool attached to. */
+export type Command = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+
+/** The error of a read's next command once the read is over, e.g. after it ran out of time. */
+export const READ_STOPPED = 'The read was stopped.';
+
+/** Sends commands to the target; with a signal, refuses to once it is aborted, without reaching Chrome. */
+export const send = (api: DebuggerApi, target: Target, signal?: AbortSignal): Command => (method, params) =>
+    signal?.aborted ? Promise.reject(new Error(READ_STOPPED)) : api.debugger.sendCommand(target, method, params);
+
+/** What one read gets: the responses to its HEAD requests so far, and commands that stop working when the read is over. */
+export interface Session {
+    readonly responses: readonly unknown[];
+    readonly command: Command;
+}
 
 /**
  * Collects the responses to HEAD requests from one target, from which the connection details are read.
@@ -50,13 +63,17 @@ export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 /**
  * Attaches the debugger to a target for one read, and always detaches it again,
  * which also hides Chrome's "started debugging this browser" bar.
+ * A read that runs out of time is stopped at its next command. Otherwise, once Chrome answered the command it was waiting for,
+ * it would carry on and send its remaining commands into whichever read attached to the same target next.
  */
-export async function withDebugger<T>(api: DebuggerApi, target: Target, timeoutMs: number, read: (responses: readonly unknown[]) => Promise<T>): Promise<T> {
+export async function withDebugger<T>(api: DebuggerApi, target: Target, timeoutMs: number, read: (session: Session) => Promise<T>): Promise<T> {
     await api.debugger.attach(target, DEBUGGER_PROTOCOL_VERSION);
     const responses = watchHeadResponses(api, target);
+    const lifetime = new AbortController();
     try {
-        return await withTimeout(read(responses.events), timeoutMs);
+        return await withTimeout(read({ responses: responses.events, command: send(api, target, lifetime.signal) }), timeoutMs);
     } finally {
+        lifetime.abort();
         responses.stop();
         await api.debugger.detach(target).catch((e: unknown) => console.warn('Cert Tool: could not detach the debugger', e));
     }
