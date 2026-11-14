@@ -1,8 +1,10 @@
 import { useId, useState } from 'react';
-import { FileSignature, Download } from 'lucide-react';
+import { FileSignature } from 'lucide-react';
 import { createCsr } from '../keys/csr';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
+import { csrFileName } from './fileNames';
+import SaveButton from './SaveButton';
 
 export default function CSRGenerator() {
     /** Prefix of this form's element ids, so its labels name their fields. */
@@ -43,31 +45,6 @@ export default function CSRGenerator() {
         }
     };
 
-    const downloadCSR = async () => {
-        const filename = `${formData.commonName.replace(/\s+/g, '_') || 'request'}.csr`;
-        if ('showSaveFilePicker' in window) {
-            try {
-                const handle = await (window as any).showSaveFilePicker({
-                    suggestedName: filename,
-                    types: [{ description: 'CSR File', accept: { 'text/plain': ['.csr'] } }],
-                });
-                const writable = await handle.createWritable();
-                await writable.write(csrOutput);
-                await writable.close();
-                return;
-            } catch (e: any) { if (e.name === 'AbortError') return; }
-        }
-        const blob = new Blob([csrOutput], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-    };
-
     return (
         <div className="glass-panel">
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '0.5rem' }}>
@@ -96,9 +73,7 @@ export default function CSRGenerator() {
                         <label htmlFor={`${id}-csr`} style={{ margin: 0, color: '#ec4899' }}>CSR (PEM)</label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <CopyButton text={csrOutput} label="CSR" />
-                            <button type="button" className="btn-secondary btn-small" onClick={downloadCSR}>
-                                <Download size={14} aria-hidden /> <span>Save</span>
-                            </button>
+                            <SaveButton text={csrOutput} label="CSR" filename={csrFileName(formData.commonName)} extensions={['.csr']} />
                         </div>
                     </div>
                     <textarea id={`${id}-csr`} readOnly value={csrOutput} rows={8} style={{ fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre' }} />

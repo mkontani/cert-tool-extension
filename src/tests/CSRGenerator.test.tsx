@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CSRGenerator from '../components/CSRGenerator';
+import { csrFileName } from '../components/fileNames';
 import { inspect } from '../inspector/inspect';
 import { findPemBlocks } from '../inspector/pem';
 import { ED25519_PKCS8, ENCRYPTED_PKCS8, RSA_PKCS1 } from './keyFixtures';
@@ -41,6 +42,21 @@ describe('CSRGenerator', () => {
         generate(ED25519_PKCS8, 'app.example, 1.2.3');
         expect(await screen.findByText('"1.2.3" is not a valid IP address.')).toBeInTheDocument();
         expect(screen.queryByDisplayValue(/BEGIN CERTIFICATE REQUEST/)).toBeNull();
+    });
+
+    it('offers to save the CSR', async () => {
+        generate(RSA_PKCS1, 'app.example');
+        await generatedCsr();
+        expect(screen.getByRole('button', { name: 'Save CSR' })).toBeInTheDocument();
+    });
+
+    it.each([
+        ['app.example', 'app.example.csr'],
+        ['*.example.com', 'wildcard.example.com.csr'],
+        ['My Server/01', 'My_Server_01.csr'],
+        ['', 'request.csr'],
+    ])('names the CSR file of %j %j', (commonName, filename) => {
+        expect(csrFileName(commonName)).toBe(filename);
     });
 
     it('explains how to use an encrypted key', async () => {
