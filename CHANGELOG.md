@@ -4,6 +4,9 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+- Inspector: SHA-256 and SHA-1 fingerprints of each certificate, written as `openssl x509 -fingerprint` and Chrome's certificate viewer write them, and the public key pin (`pin-sha256`, RFC 7469) of each certificate and CSR. Each one has its own Copy button. The pin stays the same when a certificate is renewed with the same key, so it shows whether a renewal changed the key.
+
 ### Changed
 - The tool tabs follow the WAI-ARIA tabs pattern: screen readers announce them as tabs, and the arrow keys, Home and End move between them. Tab moves from the selected tab into its panel.
 - Inspector: a pasted chain, or the chain of the current site, is now drawn as a diagram instead of a row of buttons.

@@ -405,3 +405,22 @@ h1, h2, h3 {
   white-space: nowrap;
   border: 0;
 }
+
+/* A fingerprint or pin in the Inspector's details, with its copy button beside it. */
+.hash-value {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* Breaks hex only where FingerprintRows allows it, after a colon; a base64 pin may break anywhere. */
+.hash-value code {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.hash-value .btn-small {
+  flex: none;
+}

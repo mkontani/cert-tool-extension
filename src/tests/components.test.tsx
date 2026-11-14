@@ -8,6 +8,8 @@ import { MAX_PEM_BLOCKS } from '../inspector/pem';
 import { CA_CERT, ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
 import { EMPTY_SAN_CERT, KITCHEN_SINK_CERT, MIXED_SAN_CERT, RSA_PSS_CERT, SAN_CSR } from './inspectorFixtures';
 import { EC_PKCS8, EC_PUBLIC, EC_SEC1, ENCRYPTED_PKCS8, RSA_PKCS1, RSA_PUBLIC } from './keyFixtures';
+import { LEAF_B64 } from './siteFixtures';
+import { chainToPem } from '../site/display';
 
 // Mock clipboard API
 Object.assign(navigator, {
@@ -104,6 +106,31 @@ describe('CertInspector Component', () => {
         fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
         expect(fieldValue('Public Key:')).toBe('RSA-PSS (2048 bits)');
         expect(fieldValue('Signature:')).toBe('RSASSA-PSS');
+    });
+
+    it('shows the fingerprints and the public key pin, each with its own copy button', () => {
+        render(<CertInspector />);
+        fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: chainToPem([LEAF_B64]) } });
+        fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
+        const results = screen.getByTestId('inspector-results');
+        const row = (label: string) => screen.getByText(label).nextElementSibling as HTMLElement;
+        expect(within(row('SHA-256 Fingerprint:')).getByText('22:69:40:02:2E:EE:18:D0:F3:7A:08:A4:43:A0:B0:EB:C6:D2:04:0A:CA:86:54:31:47:6B:4C:65:8C:7F:BE:FF')).toBeInTheDocument();
+        expect(within(row('SHA-1 Fingerprint:')).getByText('A0:03:C5:E3:C4:3C:E2:17:AB:5F:0F:E3:25:6D:38:34:59:6C:3E:F1')).toBeInTheDocument();
+        expect(within(row('Public Key Pin:')).getByText('R5gLengN8aXPU7JH3bjlDONl7osb9k5lJS/jhcKlIKc=')).toBeInTheDocument();
+        expect(within(results).getByRole('button', { name: 'Copy SHA-256 fingerprint' })).toBeInTheDocument();
+        expect(within(results).getByRole('button', { name: 'Copy SHA-1 fingerprint' })).toBeInTheDocument();
+        expect(within(results).getByRole('button', { name: 'Copy public key pin' })).toBeInTheDocument();
+        // Hex may wrap after each of its 31 colons, never inside a byte; the base64 pin has no such breaks.
+        expect(row('SHA-256 Fingerprint:').querySelectorAll('code wbr')).toHaveLength(31);
+        expect(row('Public Key Pin:').querySelectorAll('code wbr')).toHaveLength(0);
+    });
+
+    it('pins the public key of a CSR but lists no fingerprint for it', () => {
+        render(<CertInspector />);
+        fireEvent.change(screen.getByLabelText(/Input \(Certificate or CSR\)/i), { target: { value: SAN_CSR } });
+        fireEvent.click(screen.getByRole('button', { name: /Parse/i }));
+        expect(screen.getByText('Public Key Pin:')).toBeInTheDocument();
+        expect(screen.queryByText('SHA-256 Fingerprint:')).toBeNull();
     });
 
     describe('pasted chains', () => {
