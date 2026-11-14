@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Download, RefreshCw } from 'lucide-react';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
@@ -8,6 +8,8 @@ type KeySize = 2048 | 4096;
 type Curve = 'P-256' | 'P-384' | 'P-521';
 
 export default function KeyPairGenerator() {
+    /** Prefix of this form's element ids, so its labels name their fields. */
+    const id = useId();
     const [algorithm, setAlgorithm] = useState<Algorithm>('RSA');
     const [keySize, setKeySize] = useState<KeySize>(2048);
     const [curve, setCurve] = useState<Curve>('P-256');
@@ -165,8 +167,9 @@ export default function KeyPairGenerator() {
 
                 {algorithm === 'RSA' && (
                     <div>
-                        <label>Key Size (bits)</label>
+                        <label htmlFor={`${id}-size`}>Key Size (bits)</label>
                         <select
+                            id={`${id}-size`}
                             value={keySize}
                             onChange={(e) => setKeySize(Number(e.target.value) as KeySize)}
                             disabled={isGenerating}
@@ -179,8 +182,9 @@ export default function KeyPairGenerator() {
 
                 {algorithm === 'ECDSA' && (
                     <div>
-                        <label>Curve</label>
+                        <label htmlFor={`${id}-curve`}>Curve</label>
                         <select
+                            id={`${id}-curve`}
                             value={curve}
                             onChange={(e) => setCurve(e.target.value as Curve)}
                             disabled={isGenerating}
@@ -223,7 +227,7 @@ export default function KeyPairGenerator() {
                     {/* Private Key Section */}
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <label style={{ margin: 0, color: '#ec4899' }}>Private Key</label>
+                            <label htmlFor={`${id}-private`} style={{ margin: 0, color: '#ec4899' }}>Private Key</label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <CopyButton text={privateKey} label="private key" />
                                 <button type="button" className="btn-secondary btn-small" onClick={() => downloadFile(privateKey, 'private.key', 'key')}>
@@ -233,6 +237,7 @@ export default function KeyPairGenerator() {
                             </div>
                         </div>
                         <textarea
+                            id={`${id}-private`}
                             readOnly
                             value={privateKey}
                             rows={6}
@@ -243,7 +248,7 @@ export default function KeyPairGenerator() {
                     {/* Public Key Section */}
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <label style={{ margin: 0, color: '#8b5cf6' }}>Public Key</label>
+                            <label htmlFor={`${id}-public`} style={{ margin: 0, color: '#8b5cf6' }}>Public Key</label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <CopyButton text={publicKey} label="public key" />
                                 <button type="button" className="btn-secondary btn-small" onClick={() => downloadFile(publicKey, 'public.pem', 'pem')}>
@@ -253,6 +258,7 @@ export default function KeyPairGenerator() {
                             </div>
                         </div>
                         <textarea
+                            id={`${id}-public`}
                             readOnly
                             value={publicKey}
                             rows={6}
