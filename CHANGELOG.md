@@ -22,6 +22,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Inspector: a block whose contents are not shaped like a certificate or CSR, such as a CSR under a `CERTIFICATE` label, failed with a JavaScript error like "Cannot read properties of undefined". It now says "Unexpected ASN.1 structure."
 - Save buttons:
   - When Chrome's save dialog failed, Gen CSR and Derive PubKey saved the file straight to the Downloads folder without asking where. They now fall back to Chrome's downloads with its Save As dialog, as Gen KeyPair already did.
   - No Save button writes a file without asking where any more, since the file may hold a private key.

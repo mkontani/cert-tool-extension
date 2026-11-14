@@ -23,7 +23,6 @@ export default defineConfig([
       },
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -35,6 +34,38 @@ export default defineConfig([
       'no-control-regex': 'off',
       // Debug output must not ship in the popup; errors and warnings are still reported.
       'no-console': ['error', { allow: ['warn', 'error'] }],
+    },
+  },
+  {
+    // The popup and the cards shown on pages build their DOM from text, never from HTML, so nothing a page or a
+    // certificate holds can become markup. Tests may still set up pages with HTML.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/tests/**'],
+    rules: {
+      'no-restricted-properties': ['error',
+        ...['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'createContextualFragment', 'setHTML', 'setHTMLUnsafe', 'srcdoc'].map(property => ({
+          property,
+          message: 'Build the DOM from text (textContent, createElement or JSX) instead of HTML.',
+        })),
+        ...['write', 'writeln'].map(property => ({
+          object: 'document',
+          property,
+          message: 'Build the DOM from text (textContent, createElement or JSX) instead of HTML.',
+        })),
+      ],
+      // A guard against slips, not a proof: an aliased document or Object.assign onto an element still gets through.
+      'no-restricted-syntax': ['error',
+        ...[
+          "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          // document.write reached through window or globalThis, which no-restricted-properties does not match.
+          "MemberExpression[object.property.name='document'][property.name='write']",
+          "MemberExpression[object.property.name='document'][property.name='writeln']",
+          "NewExpression[callee.name='DOMParser']",
+        ].map(selector => ({
+          selector,
+          message: 'Build the DOM from text (textContent, createElement or JSX) instead of HTML.',
+        })),
+      ],
     },
   },
 ])
