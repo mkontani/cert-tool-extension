@@ -384,7 +384,7 @@ h1, h2, h3 {
   cursor: pointer;
 }
 
-.btn-small[data-state="copied"] {
+.btn-small[data-state="done"] {
   color: #6ee7b7;
 }
 
