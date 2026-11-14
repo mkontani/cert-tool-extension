@@ -22,6 +22,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Inspector and Scan this page: when a block was cut off, the blocks after it were lost. One block with no END line made the scan look for the END line in the next block, so both were reported as one unreadable block. The cut-off block is now reported on its own, and the blocks after it are read as usual.
 - Gen KeyPair, Gen CSR and Derive PubKey: every field and output now has its label attached, so screen readers announce what it is and clicking a label focuses its field. These were the key size and curve, the CSR form's fields and private key, and the generated keys, CSR and public key.
 - Lint warned that a certificate with exactly 30 days left was expiring soon, while the badges on pages and the Inspector showed it as valid ("30d left"). All three now share one rule: fewer than 30 days left.
 - Switching tabs no longer clears a tool. Before, a generated key pair, a filled-in CSR form or a pasted certificate was lost as soon as another tab was opened. Everything is still kept only while the popup is open, and nothing is saved.

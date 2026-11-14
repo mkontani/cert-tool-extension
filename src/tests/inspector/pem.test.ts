@@ -41,6 +41,22 @@ describe('findPemBlocks', () => {
         ]);
     });
 
+    it('reads on past a block that is cut off where the next one begins', () => {
+        expect(findPemBlocks(`-----BEGIN CERTIFICATE-----\nMIIB\n${CA_CERT}\n${SAN_CSR}`).blocks).toEqual([
+            { kind: 'certificate', error: 'The CERTIFICATE block has no matching END line.' },
+            cert(CA_CERT),
+            { kind: 'csr', der: derOf(SAN_CSR) },
+        ]);
+    });
+
+    it('reads on past a cut-off block that is followed by a block of another kind', () => {
+        const key = '-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----';
+        expect(findPemBlocks(`-----BEGIN CERTIFICATE REQUEST-----\nMIIB\n${key}\n${CA_CERT}`).blocks).toEqual([
+            { kind: 'csr', error: 'The CERTIFICATE REQUEST block has no matching END line.' },
+            cert(CA_CERT),
+        ]);
+    });
+
     it('reports a block that is not base64 and carries on', () => {
         const broken = '-----BEGIN CERTIFICATE-----\n#!\n-----END CERTIFICATE-----';
         expect(findPemBlocks(`${broken}\n${CA_CERT}`).blocks).toEqual([
@@ -53,6 +69,13 @@ describe('findPemBlocks', () => {
         const scan = findPemBlocks(`${CA_CERT}\n`.repeat(MAX_PEM_BLOCKS + 1));
         expect(scan.blocks).toHaveLength(MAX_PEM_BLOCKS);
         expect(scan.truncated).toBe(true);
+    });
+
+    it('scans cut-off blocks followed by one far END line in linear time', () => {
+        const text = `${'-----BEGIN CERTIFICATE-----\n'.repeat(MAX_PEM_BLOCKS)}${'A'.repeat(1_000_000)}\n-----END CERTIFICATE-----`;
+        const started = performance.now();
+        expect(findPemBlocks(text).blocks).toHaveLength(MAX_PEM_BLOCKS);
+        expect(performance.now() - started).toBeLessThan(500);
     });
 
     it.each([
