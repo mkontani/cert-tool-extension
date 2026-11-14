@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { AlertCircle, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import ErrorBanner from './ErrorBanner';
 import { lintCertificate } from '../lint/lint';
 import { CertParseError } from '../lint/parse';
 import type { LintReport, Profile } from '../lint/types';
@@ -84,17 +85,7 @@ export default function CertLinter() {
             >
                 Lint
             </button>
-            {outcome && 'error' in outcome && (
-                <div
-                    role="alert"
-                    style={{
-                        padding: '1rem', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)',
-                        borderRadius: '8px', color: '#fca5a5', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                    }}
-                >
-                    <AlertCircle size={18} /> {outcome.error}
-                </div>
-            )}
+            {outcome && 'error' in outcome && <ErrorBanner>{outcome.error}</ErrorBanner>}
             <div aria-live="polite">
                 {outcome && 'report' in outcome && <LintResults report={outcome.report} autoDetected={profile === 'auto'} />}
             </div>

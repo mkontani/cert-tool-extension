@@ -5,6 +5,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 ## [Unreleased]
 
 ### Changed
+- The tool tabs follow the WAI-ARIA tabs pattern: screen readers announce them as tabs, and the arrow keys, Home and End move between them. Tab moves from the selected tab into its panel.
 - Inspector: a pasted chain, or the chain of the current site, is now drawn as a diagram instead of a row of buttons.
   - Each certificate is a node with its name, key, and days left, colored like the badges on pages. It is joined to the next one by an "issued by" link when that certificate issued it. Click a node to see its details, as before.
   - An issuer listed out of order, or missing from the input, is named under the certificate. This shows at a glance when a `fullchain.pem` is in the wrong order or lacks an intermediate.
@@ -17,6 +18,9 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Switching tabs no longer clears a tool. Before, a generated key pair, a filled-in CSR form or a pasted certificate was lost as soon as another tab was opened. Everything is still kept only while the popup is open, and nothing is saved.
+- Copy buttons: when Chrome refused to write to the clipboard, for example because the popup was not focused, nothing happened. The button now shows "Copy failed", and screen readers are told to copy the text by hand. A successful copy is announced too.
+- Errors in Gen KeyPair, Gen CSR and Derive PubKey are now announced to screen readers, as they already were in the Inspector and Lint.
 - Show this site's certificate: when Chrome took too long to answer, the read gave up after 10 seconds but kept running in the background. If the button was clicked again meanwhile, the old read could send its remaining commands into the new one. It now stops at its next command.
 - Gen CSR: CSRs signed with an RSA key used SHA-1 (`sha1WithRSAEncryption`), which public CAs reject. They now use SHA-256 (`sha256WithRSAEncryption`). ECDSA keys sign with SHA-256, SHA-384 or SHA-512 to match the curve, as before.
 - Gen CSR: SANs were left out of CSRs signed with an Ed25519 key.

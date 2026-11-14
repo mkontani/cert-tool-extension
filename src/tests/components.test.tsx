@@ -285,7 +285,7 @@ describe('PubKeyDeriver Component', () => {
 
     it('explains how to use an encrypted key', async () => {
         derive(ENCRYPTED_PKCS8);
-        expect(await screen.findByText(/This private key is encrypted\. Remove its passphrase first/)).toBeInTheDocument();
+        expect(await screen.findByRole('alert')).toHaveTextContent(/This private key is encrypted\. Remove its passphrase first/);
     });
 
     it('should extract public key from a private key', async () => {

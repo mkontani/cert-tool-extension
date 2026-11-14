@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Download, Copy, RefreshCw, AlertCircle, Check } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
+import CopyButton from './CopyButton';
+import ErrorBanner from './ErrorBanner';
 
 type Algorithm = 'RSA' | 'Ed25519' | 'ECDSA';
 type KeySize = 2048 | 4096;
@@ -13,7 +15,6 @@ export default function KeyPairGenerator() {
     const [publicKey, setPublicKey] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [copyStatus, setCopyStatus] = useState<{ [key: string]: boolean }>({});
 
     const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
         let binary = '';
@@ -91,13 +92,6 @@ export default function KeyPairGenerator() {
                 setIsGenerating(false);
             }
         }, 50);
-    };
-
-    const copyToClipboard = (text: string, id: string) => {
-        navigator.clipboard.writeText(text).then(() => {
-            setCopyStatus(prev => ({ ...prev, [id]: true }));
-            setTimeout(() => setCopyStatus(prev => ({ ...prev, [id]: false })), 2000);
-        });
     };
 
     const downloadFile = async (content: string, filename: string, ext?: string) => {
@@ -222,16 +216,7 @@ export default function KeyPairGenerator() {
         @keyframes spin { 100% { transform: rotate(360deg); } }
       `}</style>
 
-            {error && (
-                <div style={{
-                    padding: '1rem', background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '8px',
-                    color: '#fca5a5', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-                }}>
-                    <AlertCircle size={18} />
-                    {error}
-                </div>
-            )}
+            {error && <ErrorBanner>{error}</ErrorBanner>}
 
             {privateKey && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }} data-testid="keypair-results">
@@ -240,21 +225,10 @@ export default function KeyPairGenerator() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                             <label style={{ margin: 0, color: '#ec4899' }}>Private Key</label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button
-                                    className="btn-secondary"
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => copyToClipboard(privateKey, 'priv')}
-                                >
-                                    {copyStatus['priv'] ? <Check size={14} /> : <Copy size={14} />}
-                                    <span style={{ marginLeft: '4px' }}>{copyStatus['priv'] ? 'Copied' : 'Copy'}</span>
-                                </button>
-                                <button
-                                    className="btn-secondary"
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => downloadFile(privateKey, 'private.key', 'key')}
-                                >
-                                    <Download size={14} />
-                                    <span style={{ marginLeft: '4px' }}>Save</span>
+                                <CopyButton text={privateKey} label="private key" />
+                                <button type="button" className="btn-secondary btn-small" onClick={() => downloadFile(privateKey, 'private.key', 'key')}>
+                                    <Download size={14} aria-hidden />
+                                    <span>Save</span>
                                 </button>
                             </div>
                         </div>
@@ -271,21 +245,10 @@ export default function KeyPairGenerator() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                             <label style={{ margin: 0, color: '#8b5cf6' }}>Public Key</label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button
-                                    className="btn-secondary"
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => copyToClipboard(publicKey, 'pub')}
-                                >
-                                    {copyStatus['pub'] ? <Check size={14} /> : <Copy size={14} />}
-                                    <span style={{ marginLeft: '4px' }}>{copyStatus['pub'] ? 'Copied' : 'Copy'}</span>
-                                </button>
-                                <button
-                                    className="btn-secondary"
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                                    onClick={() => downloadFile(publicKey, 'public.pem', 'pem')}
-                                >
-                                    <Download size={14} />
-                                    <span style={{ marginLeft: '4px' }}>Save</span>
+                                <CopyButton text={publicKey} label="public key" />
+                                <button type="button" className="btn-secondary btn-small" onClick={() => downloadFile(publicKey, 'public.pem', 'pem')}>
+                                    <Download size={14} aria-hidden />
+                                    <span>Save</span>
                                 </button>
                             </div>
                         </div>

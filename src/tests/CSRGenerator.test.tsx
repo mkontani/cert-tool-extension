@@ -45,6 +45,6 @@ describe('CSRGenerator', () => {
 
     it('explains how to use an encrypted key', async () => {
         generate(ENCRYPTED_PKCS8, '');
-        expect(await screen.findByText(/This private key is encrypted\. Remove its passphrase first/)).toBeInTheDocument();
+        expect(await screen.findByRole('alert')).toHaveTextContent(/This private key is encrypted\. Remove its passphrase first/);
     });
 });
