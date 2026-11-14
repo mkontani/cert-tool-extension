@@ -21,6 +21,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Lint warned that a certificate with exactly 30 days left was expiring soon, while the badges on pages and the Inspector showed it as valid ("30d left"). All three now share one rule: fewer than 30 days left.
 - Switching tabs no longer clears a tool. Before, a generated key pair, a filled-in CSR form or a pasted certificate was lost as soon as another tab was opened. Everything is still kept only while the popup is open, and nothing is saved.
 - Copy buttons: when Chrome refused to write to the clipboard, for example because the popup was not focused, nothing happened. The button now shows "Copy failed", and screen readers are told to copy the text by hand. A successful copy is announced too.
 - Errors in Gen KeyPair, Gen CSR and Derive PubKey are now announced to screen readers, as they already were in the Inspector and Lint.

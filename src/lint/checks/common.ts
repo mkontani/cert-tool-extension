@@ -1,3 +1,4 @@
+import { DAY_MS } from '../../shared/expiry';
 import type { CertContext, CheckOutcome, Severity } from '../types';
 
 export const PASS: CheckOutcome = { status: 'pass' };
@@ -5,7 +6,7 @@ export const NOT_APPLICABLE: CheckOutcome = { status: 'na' };
 
 export const issue = (severity: Severity, message: string): CheckOutcome => ({ status: 'issue', severity, message });
 
-export const DAY_MS = 86_400_000;
+export { DAY_MS };
 
 /** BR §6.3.2 day count: the inclusive validity period, where any partial day counts as a whole day. */
 export function validityDays(cert: CertContext): number {
