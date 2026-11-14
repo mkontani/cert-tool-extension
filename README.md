@@ -84,5 +84,3 @@ Cert Tool needs Chrome 137 or later, the first version whose Web Crypto supports
 - `scripts/gen-lint-fixtures.sh` regenerates the test certificates (requires OpenSSL 3.4+).
 - Rules follow CA/Browser Forum TLS BR v2.3.1, Chrome Root Program Policy v1.8, and Mozilla Root Store Policy v3.1. Date-based rules (e.g. the validity limits that tighten in 2027 and 2029) are already encoded.
 
----
-Developed with focus on security, usability, and modern aesthetics.
