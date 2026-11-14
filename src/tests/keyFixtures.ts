@@ -159,3 +159,43 @@ export const EC_SEC1_NO_PUBLIC = `-----BEGIN EC PRIVATE KEY-----
 MDECAQEEIJQ9mGX1IfsjHLl3p7fA5bvbiGjtPP0Evk/w8WStUu/ooAoGCCqGSM49
 AwEH
 -----END EC PRIVATE KEY-----`;
+
+/** RSA_PUBLIC as PKCS#1: `openssl rsa -pubin -in rsa.pub.pem -RSAPublicKey_out` */
+export const RSA_PUBLIC_PKCS1 = `-----BEGIN RSA PUBLIC KEY-----
+MIIBCgKCAQEAzlcZIarkl0V/F/UWeDvpEjX2MJSRnl5oixW6mBty4eYUU9Dw/Krr
+vmMM0Dag9ArNgvcVf8CpTKmq8/gagiQA9Zjl4PDfv7X3DqtqcQNQB9bmp0tfH9Ka
+Gjdh58AA0lmBvunSZ+TVspAbnwP0Yl0HK2NR9+ynOJOTTGxXVXBeH7u0AEc3KOmz
++dy40rOX04R1YAhOcfRAM2ZEBgw7NRMKo/yXBsuqEKtVys41k7E4hyK6N+KtB1Vm
+avz/8dvLWCshOQQ4sj0zjBeYxLeDwUXNQYCOR0Q7W6Yzg8tI8pN2SX3JyS7wn4Xo
+MmfspQ+9oMcORmRK3yvjAEoN4NKBJ6QErwIDAQAB
+-----END RSA PUBLIC KEY-----`;
+
+/** The public key of CA_CERT in lint/fixtures: `openssl x509 -in ca.pem -pubkey -noout` */
+export const CA_CERT_PUBLIC = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv5fygs28Mb7oFEKaS4/T
+3E/qFeNscQV2ySfF1ADwHr+PDz1kL09tciRCpcvZpUrVxLI1v+fNIbFXJviTrxZb
+Y9mtWn/O1NAaKU9VsFpVfhQpShztMwbLubvQ2K8+zQf5kCgqRbWQukK08zEoUXur
+NqqwQ9r7hLS4n/dGw3glzeMtcoH6TsXonEReV+Tt8pnKFM3e51LGHASBN3BJnpq6
+2lkrr28ns4cN1EZGl0tnrRlCVZ/74zCpI6dEq92StIdvYGrLpXUJa7aci+6xq9yW
+dIk2cK15XnaPfjFtMRxSTCELT+HKVJ/3v3DfJ9hlpCXoarKleb1TpE0UkiQUVH0e
+2wIDAQAB
+-----END PUBLIC KEY-----`;
+
+/** The public key of LEGACY_V1_SHA1 in lint/fixtures, a v1 certificate: `openssl x509 -in v1.pem -pubkey -noout` */
+export const V1_CERT_PUBLIC = `-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+ZWjwZUtR9JJwRrHOKFjqS6oa
+6wrLu4vAsslM/GCy72X9mK35jiPyPIyo7L1uJIAF4ttw+1W1qp40k5U3x5Q+OYM8
+0ZxBIq4JxKsDavkQZR4MRukYHfQ12FiwdwJeKNeuDqyD6VFocK9eF9uEWmlyaq+Z
+Z4cYvfyXN13gzejv1QIDAQAB
+-----END PUBLIC KEY-----`;
+
+/** The public key of ED25519_LEAF in lint/fixtures: `openssl x509 -in ed25519-leaf.pem -pubkey -noout` */
+export const ED25519_CERT_PUBLIC = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEA08TH9eenaPl/U8crvF3/6ZWFJy1HUfsMi8pJSVR57wA=
+-----END PUBLIC KEY-----`;
+
+/** The public key of SAN_CSR in inspectorFixtures: `openssl req -in san.csr -pubkey -noout` */
+export const SAN_CSR_PUBLIC = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEHs/HzruGZpoFTx0to5TTOg91Ljz5
+vw/b59htswn8f3fQAKt1ay7x9JGcfUZDLwOgHL5YFNv5KL8+AxbSZ2a6Ug==
+-----END PUBLIC KEY-----`;

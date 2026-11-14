@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import forge from 'node-forge';
 import { Key, ArrowDownCircle, Download, Loader2 } from 'lucide-react';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
-import { toPem } from '../keys/pem';
-import { describeKey, publicKeyOf, readPrivateKey } from '../keys/privateKey';
+import { derivePublicKey } from '../keys/publicKey';
 
 export default function PubKeyDeriver() {
     const [inputPem, setInputPem] = useState('');
@@ -13,82 +11,20 @@ export default function PubKeyDeriver() {
     const [error, setError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const decodePem = (pem: string): Uint8Array => {
-        const match = pem.match(/-----BEGIN [^-]+-----([\s\S]+?)-----END [^-]+-----/);
-        const base64 = (match ? match[1] : pem).replace(/\s/g, '');
-        const binary = window.atob(base64);
-        const buffer = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
-        return buffer;
-    };
-
-    const formatPem = (label: string, base64: string) => {
-        const matches = base64.match(/.{1,64}/g) || [];
-        return `-----BEGIN ${label}-----\n${matches.join('\n')}\n-----END ${label}-----`;
-    };
-
-    const derivePublicKey = async () => {
+    const derive = async () => {
         setError(null);
         setPublicKey('');
         setSourceType(null);
+        if (!inputPem.trim()) return;
+
         setIsProcessing(true);
-
-        if (!inputPem.trim()) {
-            setIsProcessing(false);
-            return;
-        }
-
         try {
-            if (inputPem.includes('PRIVATE KEY')) {
-                // PKCS#8, PKCS#1 or SEC1; the key block is found even when a certificate comes first.
-                const key = readPrivateKey(inputPem);
-                setPublicKey(toPem('PUBLIC KEY', await publicKeyOf(key)));
-                setSourceType(`Private Key (${describeKey(key.algorithm)})`);
-            } else if (inputPem.includes('CERTIFICATE REQUEST')) {
-                // Robust ASN.1 Extraction for CSR
-                const der = forge.util.binary.raw.encode(new Uint8Array(decodePem(inputPem)));
-                const asn1 = forge.asn1.fromDer(der);
-                // CSR is SEQUENCE [ CertificationRequestInfo, SignatureAlgorithm, SignatureValue ]
-                // CertificationRequestInfo is SEQUENCE [ Version, Subject, SubjectPublicKeyInfo, Attributes ]
-                // So SubjectPublicKeyInfo is at index 0.value[2]
-                const cri = (asn1 as any).value[0];
-                const spki = cri.value[2];
-                if (!spki) throw new Error("Could not find SubjectPublicKeyInfo in CSR.");
-
-                const spkiDer = forge.asn1.toDer(spki).getBytes();
-                setPublicKey(formatPem('PUBLIC KEY', forge.util.encode64(spkiDer)));
-                setSourceType('CSR');
-            } else if (inputPem.includes('CERTIFICATE')) {
-                // Robust ASN.1 Extraction for Certificate
-                const der = forge.util.binary.raw.encode(new Uint8Array(decodePem(inputPem)));
-                const asn1 = forge.asn1.fromDer(der);
-                // Certificate is SEQUENCE [ TBSCertificate, SignatureAlgorithm, SignatureValue ]
-                // TBSCertificate is SEQUENCE [ Version (opt), SerialNumber, Signature, Issuer, Validity, Subject, SubjectPublicKeyInfo, ... ]
-                const tbs = (asn1 as any).value[0];
-                // SubjectPublicKeyInfo is at index 6 if version is present (as context tag 0)
-                let spkiIdx = 6;
-                // Check if index 0 is version (tagged 0)
-                if (tbs.value[0].tagClass === forge.asn1.Class.CONTEXT_SPECIFIC) {
-                    spkiIdx = 6; // index 0 is version, 1 is serial, 2 is sig, 3 is issuer, 4 is validity, 5 is subject, 6 is spki
-                } else {
-                    spkiIdx = 5; // index 0 is serial, etc. (version is absent)
-                }
-                const spki = tbs.value[spkiIdx];
-                if (!spki) throw new Error("Could not find SubjectPublicKeyInfo in Certificate.");
-
-                const spkiDer = forge.asn1.toDer(spki).getBytes();
-                setPublicKey(formatPem('PUBLIC KEY', forge.util.encode64(spkiDer)));
-                setSourceType('Certificate');
-            } else if (inputPem.includes('PUBLIC KEY')) {
-                setPublicKey(inputPem);
-                setSourceType('Public Key');
-            } else {
-                throw new Error("Unrecognized PEM format.");
-            }
-
-        } catch (e: any) {
+            const derived = await derivePublicKey(inputPem);
+            setPublicKey(derived.pem);
+            setSourceType(derived.source);
+        } catch (e: unknown) {
             console.error('Derivation error:', e);
-            setError(e.message || "Failed to derive public key");
+            setError(e instanceof Error ? e.message : 'Failed to derive public key');
         } finally {
             setIsProcessing(false);
         }
@@ -136,7 +72,7 @@ export default function PubKeyDeriver() {
                     style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
                 />
             </div>
-            <button className="btn" onClick={derivePublicKey} disabled={isProcessing} style={{ width: '100%', marginBottom: '1.5rem' }}>
+            <button className="btn" onClick={derive} disabled={isProcessing} style={{ width: '100%', marginBottom: '1.5rem' }}>
                 {isProcessing ? <Loader2 className="spin" size={18} style={{ marginRight: '0.5rem', animation: 'spin 1s linear infinite' }} /> : <ArrowDownCircle size={18} style={{ marginRight: '0.5rem' }} />}
                 Extract Public Key
             </button>

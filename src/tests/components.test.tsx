@@ -7,7 +7,7 @@ import PubKeyDeriver from '../components/PubKeyDeriver';
 import { MAX_PEM_BLOCKS } from '../inspector/pem';
 import { CA_CERT, ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
 import { EMPTY_SAN_CERT, KITCHEN_SINK_CERT, MIXED_SAN_CERT, RSA_PSS_CERT, SAN_CSR } from './inspectorFixtures';
-import { EC_PKCS8, EC_PUBLIC, EC_SEC1, ENCRYPTED_PKCS8, RSA_PKCS1, RSA_PUBLIC } from './keyFixtures';
+import { CA_CERT_PUBLIC, EC_PKCS8, EC_PUBLIC, EC_SEC1, ENCRYPTED_PKCS8, RSA_PKCS1, RSA_PUBLIC, SAN_CSR_PUBLIC } from './keyFixtures';
 import { LEAF_B64 } from './siteFixtures';
 import { chainToPem } from '../site/display';
 
@@ -308,6 +308,23 @@ describe('PubKeyDeriver Component', () => {
         const results = await screen.findByTestId('deriver-results');
         expect(results).toHaveTextContent(`(from Private Key (${algorithm}))`);
         expect(within(results).getByRole('textbox')).toHaveValue(`${expected}\n`);
+    });
+
+    it.each([
+        ['a certificate', CA_CERT, CA_CERT_PUBLIC, 'Certificate'],
+        ['a CSR', SAN_CSR, SAN_CSR_PUBLIC, 'CSR'],
+        ['a public key with text around it', `Our key:\n${RSA_PUBLIC}\nThanks!`, RSA_PUBLIC, 'Public Key'],
+    ])('extracts the same public key as openssl from %s', async (_, pem, expected, source) => {
+        derive(pem);
+        const results = await screen.findByTestId('deriver-results');
+        expect(results).toHaveTextContent(`(from ${source})`);
+        expect(within(results).getByRole('textbox')).toHaveValue(`${expected}\n`);
+    });
+
+    it('explains input it cannot read', async () => {
+        derive('hello');
+        expect(await screen.findByRole('alert')).toHaveTextContent('Paste a private key, certificate, CSR or public key in PEM');
+        expect(screen.queryByTestId('deriver-results')).not.toBeInTheDocument();
     });
 
     it('explains how to use an encrypted key', async () => {

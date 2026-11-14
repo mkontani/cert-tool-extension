@@ -22,6 +22,13 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Derive PubKey: a pasted `PUBLIC KEY` was copied to the output as it was, with any text around it and without checking it.
+  - The output is now only the public key block, rewritten with 64-character lines.
+  - A block that does not hold a public key gets a message instead.
+  - A PKCS#1 `RSA PUBLIC KEY` is converted to a `PUBLIC KEY` block (SubjectPublicKeyInfo).
+- Derive PubKey: the key now comes from the first certificate, CSR or public key in the input. Before, it came from the first PEM block of any kind, and failed when that block was something else, such as a public key pasted before a certificate.
+  - The legacy `X509 CERTIFICATE` and `NEW CERTIFICATE REQUEST` labels are read, as in the Inspector.
+  - A private key block is still used first, wherever it is in the input. Text that only mentions a private key, or a key block that was cut off, is no longer taken for one.
 - Lint: a pasted chain was linted without saying that only its first certificate was checked. The results now say how many certificates the input holds, and that the first one was linted.
 - Lint now reads PEM the way the Inspector does:
   - The legacy `X509 CERTIFICATE` label is read.
