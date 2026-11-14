@@ -4,6 +4,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-15
+
 ### Added
 - Inspector: SHA-256 and SHA-1 fingerprints of each certificate, written as `openssl x509 -fingerprint` and Chrome's certificate viewer write them, and the public key pin (`pin-sha256`, RFC 7469) of each certificate and CSR. Each one has its own Copy button. The pin stays the same when a certificate is renewed with the same key, so it shows whether a renewal changed the key.
 
@@ -140,7 +142,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 ### Added
 - Initial release: key pair generation (RSA, ECDSA, Ed25519), CSR generation, public key derivation, and a certificate/CSR inspector.
 
-[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.3.0...HEAD
+[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.4.0...HEAD
+[1.4.0]: https://github.com/mkontani/cert-tool-extension/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/mkontani/cert-tool-extension/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/mkontani/cert-tool-extension/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/mkontani/cert-tool-extension/compare/1.0.1...1.1.0
