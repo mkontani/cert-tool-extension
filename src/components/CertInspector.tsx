@@ -9,6 +9,7 @@ import { chainRole, chainToPem } from '../site/display';
 import ChainDiagram, { type ChainEntry } from './ChainDiagram';
 import EntryList from './EntryList';
 import ErrorBanner from './ErrorBanner';
+import FingerprintRows from './FingerprintRows';
 import PageScanButton from './PageScanButton';
 import type { SiteCertificates } from '../site/messages';
 import SiteCertButton, { type SiteCertApi } from './SiteCertButton';
@@ -158,6 +159,7 @@ export default function CertInspector({ siteApi }: CertInspectorProps = {}) {
                             {info.notBefore && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Validity:</strong><div><div>{info.notBefore}</div><div style={{ fontSize: '0.8rem', opacity: 0.7 }}>to</div><div>{info.notAfter}</div></div></>}
                             {info.pubKeyAlgo && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Public Key:</strong><div>{info.pubKeyAlgo}</div></>}
                             {info.signatureAlgo && <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Signature:</strong><div>{info.signatureAlgo}</div></>}
+                            <FingerprintRows info={info} />
                             {info.extensions && info.extensions.length > 0 && (
                                 <><strong style={{ color: '#94a3b8', whiteSpace: 'nowrap', marginTop: '0.5rem' }}>Extensions:</strong>
                                     <div style={{ marginTop: '0.5rem' }}>

@@ -1,6 +1,7 @@
 import forge from 'node-forge';
 import { describePublicKey, signatureAlgorithmName } from './algorithms';
 import { describeExtension } from './extensions';
+import { fingerprintsOf, spkiPinOf } from './fingerprint';
 import { commonNameOf, describeName } from './format';
 import type { PemKind } from './pem';
 import type { ExtensionInfo, InspectionResult } from './types';
@@ -30,22 +31,25 @@ function inspectCsr(asn1: any): InspectionResult {
     }
 
     const subject = describeName(subjectDer);
+    const spki = derBytes(cri.value[2]);
     return {
         type: 'Certificate Signing Request (CSR)',
         label: commonNameOf(subjectDer) || subject || '(no subject)',
         subject,
-        pubKeyAlgo: describePublicKey(derBytes(cri.value[2])),
+        pubKeyAlgo: describePublicKey(spki),
+        spkiSha256: spkiPinOf(spki),
         signatureAlgo: signatureAlgorithmName(forge.asn1.derToOid(asn1.value[1].value[0].value)),
         extensions,
     };
 }
 
-function inspectCertificate(asn1: any): InspectionResult {
+function inspectCertificate(asn1: any, der: Uint8Array): InspectionResult {
     const tbs = asn1.value[0];
     const offset = tbs.value[0].tagClass === forge.asn1.Class.CONTEXT_SPECIFIC && tbs.value[0].type === 0 ? 1 : 0;
     const validity = tbs.value[offset + 3];
     const subjectDer = derBytes(tbs.value[offset + 4]);
     const issuerDer = derBytes(tbs.value[offset + 2]);
+    const spki = derBytes(tbs.value[offset + 5]);
 
     const extensions: ExtensionInfo[] = [];
     for (const node of tbs.value.slice(offset + 6)) {
@@ -64,7 +68,9 @@ function inspectCertificate(asn1: any): InspectionResult {
         serial: (forge.util as any).bytesToHex(tbs.value[offset].value),
         notBefore: parseDate(validity.value[0]),
         notAfter: parseDate(validity.value[1]),
-        pubKeyAlgo: describePublicKey(derBytes(tbs.value[offset + 5])),
+        pubKeyAlgo: describePublicKey(spki),
+        fingerprints: fingerprintsOf(der),
+        spkiSha256: spkiPinOf(spki),
         signatureAlgo: signatureAlgorithmName(forge.asn1.derToOid(asn1.value[1].value[0].value)),
         extensions,
     };
@@ -73,5 +79,5 @@ function inspectCertificate(asn1: any): InspectionResult {
 /** Decodes one DER-encoded certificate or CSR for display. Throws when its structure cannot be walked. */
 export function inspect(der: Uint8Array, kind: PemKind): InspectionResult {
     const asn1 = forge.asn1.fromDer(forge.util.binary.raw.encode(der));
-    return kind === 'csr' ? inspectCsr(asn1) : inspectCertificate(asn1);
+    return kind === 'csr' ? inspectCsr(asn1) : inspectCertificate(asn1, der);
 }
