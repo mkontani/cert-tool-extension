@@ -22,6 +22,11 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Lint: a pasted chain was linted without saying that only its first certificate was checked. The results now say how many certificates the input holds, and that the first one was linted.
+- Lint now reads PEM the way the Inspector does:
+  - The legacy `X509 CERTIFICATE` label is read.
+  - A CSR gets a message saying Lint checks issued certificates.
+  - A certificate cut off before the next block is reported as cut off, rather than as invalid base64.
 - Inspector and Scan this page: when a block was cut off, the blocks after it were lost. One block with no END line made the scan look for the END line in the next block, so both were reported as one unreadable block. The cut-off block is now reported on its own, and the blocks after it are read as usual.
 - Gen KeyPair, Gen CSR and Derive PubKey: every field and output now has its label attached, so screen readers announce what it is and clicking a label focuses its field. These were the key size and curve, the CSR form's fields and private key, and the generated keys, CSR and public key.
 - Lint warned that a certificate with exactly 30 days left was expiring soon, while the badges on pages and the Inspector showed it as valid ("30d left"). All three now share one rule: fewer than 30 days left.

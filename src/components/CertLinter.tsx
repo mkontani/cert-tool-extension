@@ -87,7 +87,17 @@ export default function CertLinter() {
             </button>
             {outcome && 'error' in outcome && <ErrorBanner>{outcome.error}</ErrorBanner>}
             <div aria-live="polite">
-                {outcome && 'report' in outcome && <LintResults report={outcome.report} autoDetected={profile === 'auto'} />}
+                {outcome && 'report' in outcome && (
+                    <>
+                        {outcome.report.certificateCount > 1 && (
+                            <p data-testid="lint-first-only" style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 0.75rem' }}>
+                                The input holds {outcome.report.certificateCount} certificates. Lint checked the first one;
+                                to check another, paste it on its own.
+                            </p>
+                        )}
+                        <LintResults report={outcome.report} autoDetected={profile === 'auto'} />
+                    </>
+                )}
             </div>
         </div>
     );

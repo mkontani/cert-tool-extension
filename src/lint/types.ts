@@ -98,6 +98,8 @@ export type CheckResult = Pick<CheckDefinition, 'id' | 'title' | 'citation'> & C
 export interface LintReport {
     readonly profile: Profile;
     readonly detectedProfile: Profile;
+    /** Certificates in the input; only the first was linted. */
+    readonly certificateCount: number;
     /** CA certificates are out of scope; when true, no checks were run. */
     readonly isCaCertificate: boolean;
     readonly results: readonly CheckResult[];

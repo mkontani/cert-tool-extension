@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CertLinter from '../components/CertLinter';
 import { CA_CERT, PRIVATE_EC_LEAF, PUBLIC_RSA_LEAF, SELF_SIGNED_DEFAULT } from './lint/fixtures';
+import { SAN_CSR } from './inspectorFixtures';
 
 function lint(pem: string, hostname?: string) {
     fireEvent.change(screen.getByLabelText(/Certificate \(PEM\)/i), { target: { value: pem } });
@@ -95,6 +96,32 @@ describe('CertLinter', () => {
         lint(CA_CERT);
         expect(screen.getByRole('status')).toHaveTextContent(/CA certificate/i);
         expect(screen.queryByTestId('lint-issues')).not.toBeInTheDocument();
+    });
+
+    it('says that only the first of several certificates was linted', () => {
+        render(<CertLinter />);
+        lint(`${PUBLIC_RSA_LEAF}\n${CA_CERT}\n`);
+        expect(screen.getByTestId('lint-first-only')).toHaveTextContent('The input holds 2 certificates. Lint checked the first one; to check another, paste it on its own.');
+        expect(screen.getByText(/No issues found/i)).toBeInTheDocument();
+    });
+
+    it('says so too when the first certificate is a CA certificate', () => {
+        render(<CertLinter />);
+        lint(`${CA_CERT}\n${PUBLIC_RSA_LEAF}\n`);
+        expect(screen.getByRole('status')).toHaveTextContent(/CA certificate/i);
+        expect(screen.getByTestId('lint-first-only')).toHaveTextContent('The input holds 2 certificates.');
+    });
+
+    it('says nothing about other certificates when there is only one', () => {
+        render(<CertLinter />);
+        lint(PUBLIC_RSA_LEAF);
+        expect(screen.queryByTestId('lint-first-only')).not.toBeInTheDocument();
+    });
+
+    it('explains that a CSR cannot be linted', () => {
+        render(<CertLinter />);
+        lint(SAN_CSR);
+        expect(screen.getByRole('alert')).toHaveTextContent('This is a certificate signing request (CSR).');
     });
 
     it('shows a parse error for invalid input', () => {

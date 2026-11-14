@@ -1,6 +1,6 @@
 import { ALL_CHECKS } from './checks';
 import { RESERVED_POLICY_OIDS } from './checks/common';
-import { parseCertificate } from './parse';
+import { parseFirstCertificate } from './parse';
 import type { CertContext, CheckResult, LintOptions, LintReport, Profile } from './types';
 
 /** A CA/B Forum reserved policy OID marks a certificate issued under the Baseline Requirements. */
@@ -15,16 +15,16 @@ function isCaCertificate(cert: CertContext): boolean {
 }
 
 /**
- * Lints the first PEM certificate in `text`.
+ * Lints the first PEM certificate in `text`, which for a pasted chain is the leaf.
  * @throws CertParseError if the input is not a parseable certificate.
  */
 export function lintCertificate(text: string, options: LintOptions = {}): LintReport {
-    const cert = parseCertificate(text);
+    const { cert, certificateCount } = parseFirstCertificate(text);
     const detectedProfile = detectProfile(cert);
     const profile = options.profile === 'public' || options.profile === 'private' ? options.profile : detectedProfile;
 
     if (isCaCertificate(cert)) {
-        return { profile, detectedProfile, isCaCertificate: true, results: [] };
+        return { profile, detectedProfile, certificateCount, isCaCertificate: true, results: [] };
     }
 
     const env = { now: options.now ?? new Date(), hostname: options.hostname };
@@ -34,7 +34,7 @@ export function lintCertificate(text: string, options: LintOptions = {}): LintRe
         citation: check.citation,
         ...check.run(cert, env),
     }));
-    return { profile, detectedProfile, isCaCertificate: false, results };
+    return { profile, detectedProfile, certificateCount, isCaCertificate: false, results };
 }
 
 export interface LintSummary {
