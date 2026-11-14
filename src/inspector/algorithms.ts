@@ -65,6 +65,13 @@ const SIGNATURE_ALGORITHMS: Readonly<Record<string, string>> = {
 
 export const signatureAlgorithmName = (oid: string): string => nameFor(SIGNATURE_ALGORITHMS, oid) ?? oid;
 
+/** The name of a key algorithm other than RSA and EC, e.g. "X25519", or undefined when it has none here. */
+export const keyAlgorithmName = (oid: string): string | undefined =>
+    nameFor(KEY_ALGORITHMS, oid) ?? (oid === OID_RSASSA_PSS ? 'RSA-PSS' : undefined);
+
+/** The name of a named elliptic curve, e.g. "secp256k1", or its OID. */
+export const curveName = (oid: string): string => nameFor(CURVES, oid) ?? oid;
+
 function curveOf(parameters: ArrayBuffer | null | undefined): string {
     const parsed = parameters ? asn1js.fromBER(parameters) : undefined;
     if (!parsed || parsed.offset === -1 || !(parsed.result instanceof asn1js.ObjectIdentifier)) return 'explicit parameters';
