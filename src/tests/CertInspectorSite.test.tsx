@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CertInspector from '../components/CertInspector';
@@ -27,6 +27,10 @@ async function showSite(site?: Record<string, unknown>) {
 }
 
 describe("CertInspector with the current site's certificate", () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('lists the chain from the leaf to the root', async () => {
         await showSite();
         expect(chainButtons().map(b => b.getAttribute('aria-label'))).toEqual([
@@ -35,6 +39,18 @@ describe("CertInspector with the current site's certificate", () => {
             '3: Example Root CA (root)',
         ]);
         expect(fieldValue('Subject:')).toBe('commonName=www.example.com');
+    });
+
+    it('links each certificate to the one that issued it, with how long it stays valid', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2027-01-20T00:00:00Z'));
+        await showSite();
+        const group = screen.getByRole('group', { name: 'Certificates in the input' });
+        expect(within(group).getAllByText('issued by')).toHaveLength(2);
+        const [leaf, intermediate, root] = chainButtons();
+        expect(within(leaf).getByText('19d left')).toHaveAttribute('data-state', 'expiring');
+        expect(within(intermediate).getByText('1754d left')).toHaveAttribute('data-state', 'valid');
+        expect(root).toHaveAccessibleDescription(/self-issued/);
     });
 
     it('shows each certificate of the chain', async () => {
@@ -61,6 +77,8 @@ describe("CertInspector with the current site's certificate", () => {
         const summary = await showSite({ chain: [LEAF_B64, INTERMEDIATE_B64] });
         expect(summary).toHaveTextContent('Verified by Chrome. Its chain for this site stops below the root');
         expect(chainButtons().map(b => b.getAttribute('aria-label'))).toEqual(['1: www.example.com (leaf)', '2: Example Issuing CA (intermediate)']);
+        expect(screen.getByRole('group', { name: 'Certificates in the input' }))
+            .toHaveTextContent('Issued by Example Root CA, not in the chain: Chrome trusts Example Issuing CA directly');
     });
 
     it("says so when the connection was Cert Tool's own, not the tab's", async () => {

@@ -4,6 +4,12 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+### Changed
+- Inspector: a pasted chain, or the chain of the current site, is now drawn as a diagram instead of a row of buttons.
+  - Each certificate is a node with its name, key, and days left, colored like the badges on pages. It is joined to the next one by an "issued by" link when that certificate issued it. Click a node to see its details, as before.
+  - An issuer listed out of order, or missing from the input, is named under the certificate. This shows at a glance when a `fullchain.pem` is in the wrong order or lacks an intermediate.
+  - When Chrome's chain for a site stops below the root, the diagram names the root and says Chrome trusts the last certificate directly. Chrome's root store includes some intermediates, such as Google Trust Services' WE2, so youtube.com's chain ends there.
+
 ## [1.3.0] - 2026-11-12
 
 ### Added

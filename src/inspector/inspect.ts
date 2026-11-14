@@ -45,6 +45,7 @@ function inspectCertificate(asn1: any): InspectionResult {
     const offset = tbs.value[0].tagClass === forge.asn1.Class.CONTEXT_SPECIFIC && tbs.value[0].type === 0 ? 1 : 0;
     const validity = tbs.value[offset + 3];
     const subjectDer = derBytes(tbs.value[offset + 4]);
+    const issuerDer = derBytes(tbs.value[offset + 2]);
 
     const extensions: ExtensionInfo[] = [];
     for (const node of tbs.value.slice(offset + 6)) {
@@ -53,11 +54,13 @@ function inspectCertificate(asn1: any): InspectionResult {
     }
 
     const subject = describeName(subjectDer);
+    const issuer = describeName(issuerDer);
     return {
         type: 'X.509 Certificate',
         label: commonNameOf(subjectDer) || subject || '(no subject)',
         subject,
-        issuer: describeName(derBytes(tbs.value[offset + 2])),
+        issuer,
+        issuerLabel: commonNameOf(issuerDer) || issuer || '(no issuer)',
         serial: (forge.util as any).bytesToHex(tbs.value[offset].value),
         notBefore: parseDate(validity.value[0]),
         notAfter: parseDate(validity.value[1]),

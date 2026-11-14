@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, AlertCircle } from 'lucide-react';
+import { issuerLinks } from '../inspector/chain';
 import { inspect } from '../inspector/inspect';
 import { findPemBlocks, MAX_PEM_BLOCKS, type PemBlock } from '../inspector/pem';
 import type { InspectionResult } from '../inspector/types';
+import { validityOf } from '../page/validity';
 import { chainRole, chainToPem } from '../site/display';
-import ChainSelector from './ChainSelector';
+import ChainDiagram, { type ChainEntry } from './ChainDiagram';
 import EntryList from './EntryList';
 import PageScanButton from './PageScanButton';
 import type { SiteCertificates } from '../site/messages';
@@ -40,7 +42,19 @@ function inspectBlock(block: PemBlock): InspectedItem {
 const isSelfIssued = (item: InspectedItem | undefined): boolean => item?.status === 'ok' && item.result.subject === item.result.issuer;
 
 /** Leaf, Intermediate or Root for each certificate of a chain Chrome verified, which it lists leaf first. */
-const rolesOf = (items: readonly InspectedItem[]): string[] => items.map((item, i) => chainRole(i, items.length, isSelfIssued(item)));
+const rolesOf = (items: readonly InspectedItem[]) => items.map((item, i) => chainRole(i, items.length, isSelfIssued(item)));
+
+/** What the chain diagram shows for each block: roles only for a chain Chrome verified, validity as of `now`. */
+function chainEntries(items: readonly InspectedItem[], withRoles: boolean, now: number): ChainEntry[] {
+    const links = issuerLinks(items.map(item => (item.status === 'ok' ? item.result : null)));
+    const roles = withRoles ? rolesOf(items) : [];
+    return items.map((item, i): ChainEntry => {
+        const base = { label: item.label, role: roles[i], issuer: links[i] };
+        if (item.status === 'error') return { ...base, unreadable: true };
+        const { pubKeyAlgo, notBefore, notAfter, issuerLabel } = item.result;
+        return { ...base, detail: pubKeyAlgo, validity: validityOf(notBefore, notAfter, now), issuerName: issuerLabel };
+    });
+}
 
 interface CertInspectorProps {
     /** Passed to SiteCertButton; defaults to the global chrome object inside the extension. */
@@ -52,6 +66,8 @@ export default function CertInspector({ siteApi }: CertInspectorProps = {}) {
     const [items, setItems] = useState<readonly InspectedItem[]>([]);
     const [truncated, setTruncated] = useState(false);
     const [selected, setSelected] = useState(0);
+    /** When the input was parsed, for the days left on each certificate. */
+    const [parsedAt, setParsedAt] = useState(0);
     const [error, setError] = useState<string | null>(null);
     /** Set while the input holds the chain read from the current tab. */
     const [site, setSite] = useState<SiteCertificates | null>(null);
@@ -67,6 +83,7 @@ export default function CertInspector({ siteApi }: CertInspectorProps = {}) {
         setItems([]);
         setTruncated(false);
         setSelected(0);
+        setParsedAt(Date.now());
         if (!text.trim()) return;
 
         const scan = findPemBlocks(text);
@@ -122,7 +139,7 @@ export default function CertInspector({ siteApi }: CertInspectorProps = {}) {
             </div>
             <div ref={siteRef}>{site && <SiteSummary site={site} endsAtRoot={items.length > 1 && isSelfIssued(items.at(-1))} />}</div>
             {items.length > 1 && (
-                <ChainSelector labels={items.map(item => item.label)} tags={site ? rolesOf(items) : undefined}
+                <ChainDiagram entries={chainEntries(items, site !== null, parsedAt)} verified={site?.trusted}
                     selected={selected} onSelect={setSelected} controls={OUTPUT_ID} />
             )}
             {truncated && (
