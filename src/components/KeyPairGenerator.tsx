@@ -1,7 +1,8 @@
 import { useId, useState } from 'react';
-import { Download, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
+import SaveButton from './SaveButton';
 
 type Algorithm = 'RSA' | 'Ed25519' | 'ECDSA';
 type KeySize = 2048 | 4096;
@@ -87,61 +88,13 @@ export default function KeyPairGenerator() {
 
                 setPrivateKey(privPem);
                 setPublicKey(pubPem);
-            } catch (e: any) {
+            } catch (e: unknown) {
                 console.error(e);
-                setError("Error generating keys: " + (e.message || e));
+                setError(`Error generating keys: ${e instanceof Error ? e.message : String(e)}`);
             } finally {
                 setIsGenerating(false);
             }
         }, 50);
-    };
-
-    const downloadFile = async (content: string, filename: string, ext?: string) => {
-        // 1. Try modern File System Access API (works in most modern Chromes)
-        if ('showSaveFilePicker' in window) {
-            try {
-                const handle = await (window as any).showSaveFilePicker({
-                    suggestedName: filename,
-                    types: [{
-                        description: 'Certificate/Key File',
-                        accept: { 'text/plain': ext ? [`.${ext}`] : ['.pem', '.key', '.csr'] },
-                    }],
-                });
-                const writable = await handle.createWritable();
-                await writable.write(content);
-                await writable.close();
-                return;
-            } catch (e: any) {
-                // AbortError means user cancelled, which is fine.
-                if (e.name === 'AbortError') return;
-                console.error('File System Access API failed', e);
-            }
-        }
-
-        // 2. Try Chrome Extension Downloads API
-        if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            chrome.downloads.download({
-                url: url,
-                filename: filename,
-                saveAs: true
-            }, () => {
-                URL.revokeObjectURL(url);
-            });
-            return;
-        }
-
-        // 3. Last resort fallback (Silent download in some cases)
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 100);
     };
 
     return (
@@ -230,10 +183,7 @@ export default function KeyPairGenerator() {
                             <label htmlFor={`${id}-private`} style={{ margin: 0, color: '#ec4899' }}>Private Key</label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <CopyButton text={privateKey} label="private key" />
-                                <button type="button" className="btn-secondary btn-small" onClick={() => downloadFile(privateKey, 'private.key', 'key')}>
-                                    <Download size={14} aria-hidden />
-                                    <span>Save</span>
-                                </button>
+                                <SaveButton text={privateKey} label="private key" filename="private.key" extensions={['.key']} />
                             </div>
                         </div>
                         <textarea
@@ -251,10 +201,7 @@ export default function KeyPairGenerator() {
                             <label htmlFor={`${id}-public`} style={{ margin: 0, color: '#8b5cf6' }}>Public Key</label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <CopyButton text={publicKey} label="public key" />
-                                <button type="button" className="btn-secondary btn-small" onClick={() => downloadFile(publicKey, 'public.pem', 'pem')}>
-                                    <Download size={14} aria-hidden />
-                                    <span>Save</span>
-                                </button>
+                                <SaveButton text={publicKey} label="public key" filename="public.pem" extensions={['.pem']} />
                             </div>
                         </div>
                         <textarea

@@ -22,6 +22,12 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Save buttons:
+  - When Chrome's save dialog failed, Gen CSR and Derive PubKey saved the file straight to the Downloads folder without asking where. They now fall back to Chrome's downloads with its Save As dialog, as Gen KeyPair already did.
+  - No Save button writes a file without asking where any more, since the file may hold a private key.
+  - When the file can't be saved, the button shows "Save failed", and screen readers are told to copy the text instead.
+  - A file saved through the save dialog shows "Saved".
+  - Gen CSR names the file after the common name, with anything a file name can't hold replaced. `*.example.com` becomes `wildcard.example.com.csr`.
 - Derive PubKey: a pasted `PUBLIC KEY` was copied to the output as it was, with any text around it and without checking it.
   - The output is now only the public key block, rewritten with 64-character lines.
   - A block that does not hold a public key gets a message instead.

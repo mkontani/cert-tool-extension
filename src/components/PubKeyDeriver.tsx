@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Key, ArrowDownCircle, Download, Loader2 } from 'lucide-react';
+import { Key, ArrowDownCircle, Loader2 } from 'lucide-react';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
+import SaveButton from './SaveButton';
 import { derivePublicKey } from '../keys/publicKey';
 
 export default function PubKeyDeriver() {
@@ -28,31 +29,6 @@ export default function PubKeyDeriver() {
         } finally {
             setIsProcessing(false);
         }
-    };
-
-    const downloadKey = async () => {
-        const filename = 'public_key.pem';
-        if ('showSaveFilePicker' in window) {
-            try {
-                const handle = await (window as any).showSaveFilePicker({
-                    suggestedName: filename,
-                    types: [{ description: 'Public Key File', accept: { 'text/plain': ['.pem'] } }],
-                });
-                const writable = await handle.createWritable();
-                await writable.write(publicKey);
-                await writable.close();
-                return;
-            } catch (e: any) { if (e.name === 'AbortError') return; }
-        }
-        const blob = new Blob([publicKey], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 100);
     };
 
     return (
@@ -86,9 +62,7 @@ export default function PubKeyDeriver() {
                         </label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <CopyButton text={publicKey} label="public key" />
-                            <button type="button" className="btn-secondary btn-small" onClick={downloadKey}>
-                                <Download size={14} aria-hidden /> <span>Save</span>
-                            </button>
+                            <SaveButton text={publicKey} label="public key" filename="public_key.pem" extensions={['.pem']} />
                         </div>
                     </div>
                     <textarea id="deriver-output" readOnly value={publicKey} rows={6} style={{ fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre' }} />

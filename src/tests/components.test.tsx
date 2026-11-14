@@ -62,6 +62,32 @@ describe('KeyPairGenerator Component', () => {
     });
 });
 
+describe('Save buttons', () => {
+    it('saves each generated key, and says so when the file cannot be saved rather than download it without asking', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => { });
+        const click = vi.spyOn(HTMLAnchorElement.prototype, 'click');
+        render(<KeyPairGenerator />);
+        fireEvent.change(screen.getByLabelText(/Algorithm/i), { target: { value: 'ECDSA' } });
+        fireEvent.click(screen.getByRole('button', { name: /Generate/i }));
+        await screen.findByTestId('keypair-results', {}, { timeout: 10000 });
+        expect(screen.getByRole('button', { name: 'Save public key' })).toBeInTheDocument();
+        // jsdom has neither a save dialog nor Chrome's downloads.
+        fireEvent.click(screen.getByRole('button', { name: 'Save private key' }));
+        expect(await screen.findByText('Save failed')).toBeInTheDocument();
+        expect(click).not.toHaveBeenCalled();
+        click.mockRestore();
+        warn.mockRestore();
+    });
+
+    it('saves a derived public key', async () => {
+        render(<PubKeyDeriver />);
+        fireEvent.change(screen.getByLabelText(/Input \(Private Key, CSR, or Certificate\)/i), { target: { value: RSA_PUBLIC } });
+        fireEvent.click(screen.getByRole('button', { name: /Extract Public Key/i }));
+        await screen.findByTestId('deriver-results');
+        expect(screen.getByRole('button', { name: 'Save public key' })).toBeInTheDocument();
+    });
+});
+
 describe('CertInspector Component', () => {
     it('should parse an RSA certificate and display info', async () => {
         render(<CertInspector />);
