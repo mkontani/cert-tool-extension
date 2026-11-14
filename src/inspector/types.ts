@@ -20,6 +20,8 @@ export interface InspectionResult {
     readonly label: string;
     readonly subject: string;
     readonly issuer?: string;
+    /** Short name of the issuer, like label for the subject. */
+    readonly issuerLabel?: string;
     readonly serial?: string;
     readonly notBefore?: string;
     readonly notAfter?: string;

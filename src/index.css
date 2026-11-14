@@ -222,3 +222,140 @@ h1, h2, h3 {
   opacity: 0;
   transition: none;
 }
+
+/*
+ * The Inspector's chain diagram: one node per pasted certificate, top to bottom in input order,
+ * joined by an "issued by" link where the next certificate issued the one above.
+ */
+.chain {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.chain-item:not(:has(> .chain-link)):not(:last-child) {
+  margin-bottom: 0.5rem;
+}
+
+.chain-node {
+  display: grid;
+  grid-template-columns: 1.1rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.chain-node:hover {
+  border-color: rgba(139, 92, 246, 0.45);
+}
+
+.chain-node:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.chain-node[aria-pressed="true"] {
+  border-color: rgba(139, 92, 246, 0.7);
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.chain-num {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.chain-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.chain-role {
+  flex: none;
+  color: var(--accent-color);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chain-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: white;
+  font-weight: 600;
+}
+
+.chain-node[data-unreadable] {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.chain-node[data-unreadable] .chain-label {
+  color: #fca5a5;
+}
+
+.chain-validity {
+  --tone: #34d399;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  color: var(--tone);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chain-validity[data-state="expiring"] {
+  --tone: #fbbf24;
+}
+
+.chain-validity[data-state="expired"],
+.chain-validity[data-state="not-yet-valid"] {
+  --tone: #f87171;
+}
+
+.chain-detail {
+  grid-column: 2 / -1;
+  margin-top: 0.1rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+/* Starts under the node's number, so the links line up into one line down the chain. */
+.chain-link {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 1.05rem;
+  padding: 0.25rem 0 0.25rem 0.55rem;
+  border-left: 2px solid rgba(6, 182, 212, 0.45);
+  color: #94a3b8;
+  font-size: 0.7rem;
+}
+
+.chain-link svg {
+  color: var(--accent-color);
+}
+
+.chain-note {
+  margin: 0.3rem 0 0 1.05rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+}

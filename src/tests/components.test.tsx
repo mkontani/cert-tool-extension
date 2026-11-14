@@ -123,6 +123,25 @@ describe('CertInspector Component', () => {
             expect(fieldValue('Subject:')).toBe('organizationName=Example Corp, commonName=app.corp');
         });
 
+        it('links a chain pasted leaf first to its issuer', () => {
+            inspect(`${PRIVATE_EC_LEAF}\n${CA_CERT}\n`);
+            const group = screen.getByRole('group', { name: 'Certificates in the input' });
+            expect(within(group).getAllByText('issued by')).toHaveLength(1);
+            expect(group).not.toHaveTextContent('out of order');
+        });
+
+        it('points at an issuer listed out of order', () => {
+            inspect(`${CA_CERT}\n${PRIVATE_EC_LEAF}\n`);
+            const group = screen.getByRole('group', { name: 'Certificates in the input' });
+            expect(within(group).queryByText('issued by')).toBeNull();
+            expect(group).toHaveTextContent('Issued by #1 Lint Test Root CA, listed out of order');
+        });
+
+        it('names an issuer missing from the input', () => {
+            inspect(`${PRIVATE_EC_LEAF}\n${SAN_CSR}\n`);
+            expect(screen.getByRole('group', { name: 'Certificates in the input' })).toHaveTextContent('Issued by Lint Test Root CA, not in the input');
+        });
+
         it('switches to the selected certificate', () => {
             inspect(`${PRIVATE_EC_LEAF}\n${CA_CERT}\n`);
             fireEvent.click(screen.getByRole('button', { name: '2: Lint Test Root CA' }));
