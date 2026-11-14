@@ -17,6 +17,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Show this site's certificate: when Chrome took too long to answer, the read gave up after 10 seconds but kept running in the background. If the button was clicked again meanwhile, the old read could send its remaining commands into the new one. It now stops at its next command.
 - Gen CSR: CSRs signed with an RSA key used SHA-1 (`sha1WithRSAEncryption`), which public CAs reject. They now use SHA-256 (`sha256WithRSAEncryption`). ECDSA keys sign with SHA-256, SHA-384 or SHA-512 to match the curve, as before.
 - Gen CSR: SANs were left out of CSRs signed with an Ed25519 key.
 - Gen CSR and Derive PubKey: PKCS#1 keys (`BEGIN RSA PRIVATE KEY`) and SEC1 keys (`BEGIN EC PRIVATE KEY`) failed with "Cannot read properties of undefined".

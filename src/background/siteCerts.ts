@@ -1,6 +1,6 @@
 import { NO_CERTIFICATE, readChain, readContextId, readMainFrame, readResponseSecurity } from '../site/cdp';
 import { isFetchSiteCertsRequest, isHttpsOrigin, NOT_HTTPS, type SiteCertificates, type SiteCertsReply } from '../site/messages';
-import { send, SITE_CERTS_TIMEOUT_MS, withDebugger, type DebuggerApi, type Target } from './debuggerSession';
+import { SITE_CERTS_TIMEOUT_MS, withDebugger, type DebuggerApi, type Session } from './debuggerSession';
 import { fetchOverOwnConnection, type OwnPage } from './ownConnection';
 
 const WORLD_NAME = 'Cert Tool';
@@ -26,8 +26,7 @@ export const HEAD_REQUEST = `(async () => {
     }
 })()`;
 
-async function readSite(api: DebuggerApi, target: Target, responses: readonly unknown[]): Promise<SiteCertificates> {
-    const command = send(api, target);
+async function readSite({ responses, command }: Session): Promise<SiteCertificates> {
     const frame = readMainFrame(await command('Page.getFrameTree'));
     if (!isHttpsOrigin(frame.origin)) throw new Error(NOT_HTTPS);
     await command('Network.enable');
@@ -47,8 +46,7 @@ async function readSite(api: DebuggerApi, target: Target, responses: readonly un
  * the only effect is the one request described at HEAD_REQUEST.
  */
 export async function fetchSiteCertificates(api: DebuggerApi, tabId: number, timeoutMs = SITE_CERTS_TIMEOUT_MS): Promise<SiteCertificates> {
-    const target = { tabId };
-    return withDebugger(api, target, timeoutMs, responses => readSite(api, target, responses));
+    return withDebugger(api, { tabId }, timeoutMs, readSite);
 }
 
 /**
