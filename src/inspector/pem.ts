@@ -41,7 +41,7 @@ function decodeBlock(kind: PemKind, body: string, name: string): PemBlock {
 
 /**
  * Finds the certificates and CSRs in pasted text, skipping keys and other PEM blocks.
- * Uses indexOf rather than a regex, and never rescans text, so hostile input cannot make the scan quadratic.
+ * Uses indexOf rather than a regex, and reads any stretch of text at most twice, so hostile input cannot make the scan quadratic.
  */
 export function findPemBlocks(text: string): PemScan {
     const blocks: PemBlock[] = [];
@@ -60,15 +60,20 @@ export function findPemBlocks(text: string): PemScan {
 
         const name = blockName(label, blocks.length);
         const bodyStart = labelEnd + DASHES.length;
+        // A block ends before the next one begins, so its END line is looked for only up to there.
+        const next = text.indexOf(BEGIN, bodyStart);
+        const body = text.slice(bodyStart, next === -1 ? text.length : next);
         const endLine = `-----END ${label}${DASHES}`;
-        const end = text.indexOf(endLine, bodyStart);
+        const end = body.indexOf(endLine);
         if (end === -1) {
-            // A truncated paste: keep what came before it.
+            // A block cut off in the paste: report it, and read on from the next one.
             blocks.push({ kind, error: `${name} has no matching END line.` });
-            break;
+            if (next === -1) break;
+            pos = next;
+            continue;
         }
-        blocks.push(decodeBlock(kind, text.slice(bodyStart, end), name));
-        pos = end + endLine.length;
+        blocks.push(decodeBlock(kind, body.slice(0, end), name));
+        pos = bodyStart + end + endLine.length;
     }
     return { blocks, truncated: false };
 }

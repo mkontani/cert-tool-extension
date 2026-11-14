@@ -5,9 +5,10 @@ export interface PemBlock {
     readonly content: string;
 }
 
-const BLOCK = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/g;
+/** A body never runs into the next BEGIN line, so a block cut off in the paste is skipped rather than swallowing the next one. */
+const BLOCK = /-----BEGIN ([A-Z0-9 ]+)-----((?:(?!-----BEGIN )[\s\S])*?)-----END \1-----/g;
 
-/** Every PEM block in the text, in order. */
+/** Every complete PEM block in the text, in order. */
 export const pemBlocks = (text: string): PemBlock[] => Array.from(text.matchAll(BLOCK), ([, label, content]) => ({ label, content }));
 
 /** The bytes of a base64 body, ignoring line breaks and spaces; null when it is not base64. */

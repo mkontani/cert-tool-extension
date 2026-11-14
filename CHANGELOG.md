@@ -22,6 +22,19 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Derive PubKey: a pasted `PUBLIC KEY` was copied to the output as it was, with any text around it and without checking it.
+  - The output is now only the public key block, rewritten with 64-character lines.
+  - A block that does not hold a public key gets a message instead.
+  - A PKCS#1 `RSA PUBLIC KEY` is converted to a `PUBLIC KEY` block (SubjectPublicKeyInfo).
+- Derive PubKey: the key now comes from the first certificate, CSR or public key in the input. Before, it came from the first PEM block of any kind, and failed when that block was something else, such as a public key pasted before a certificate.
+  - The legacy `X509 CERTIFICATE` and `NEW CERTIFICATE REQUEST` labels are read, as in the Inspector.
+  - A private key block is still used first, wherever it is in the input. Text that only mentions a private key, or a key block that was cut off, is no longer taken for one.
+- Lint: a pasted chain was linted without saying that only its first certificate was checked. The results now say how many certificates the input holds, and that the first one was linted.
+- Lint now reads PEM the way the Inspector does:
+  - The legacy `X509 CERTIFICATE` label is read.
+  - A CSR gets a message saying Lint checks issued certificates.
+  - A certificate cut off before the next block is reported as cut off, rather than as invalid base64.
+- Inspector and Scan this page: when a block was cut off, the blocks after it were lost. One block with no END line made the scan look for the END line in the next block, so both were reported as one unreadable block. The cut-off block is now reported on its own, and the blocks after it are read as usual.
 - Gen KeyPair, Gen CSR and Derive PubKey: every field and output now has its label attached, so screen readers announce what it is and clicking a label focuses its field. These were the key size and curve, the CSR form's fields and private key, and the generated keys, CSR and public key.
 - Lint warned that a certificate with exactly 30 days left was expiring soon, while the badges on pages and the Inspector showed it as valid ("30d left"). All three now share one rule: fewer than 30 days left.
 - Switching tabs no longer clears a tool. Before, a generated key pair, a filled-in CSR form or a pasted certificate was lost as soon as another tab was opened. Everything is still kept only while the popup is open, and nothing is saved.

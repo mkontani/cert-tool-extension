@@ -3,6 +3,7 @@ import { AsnConvert } from '@peculiar/asn1-schema';
 import { Certificate, Name } from '@peculiar/asn1-x509';
 import { sameBytes, toHex } from './bytes';
 import { decodeExtensions } from './extensions';
+import { findPemBlocks } from '../inspector/pem';
 import type { AlgorithmInfo, CertContext, PublicKeyInfo } from './types';
 
 export class CertParseError extends Error {
@@ -12,19 +13,28 @@ export class CertParseError extends Error {
     }
 }
 
-const PEM_CERTIFICATE = /-----BEGIN CERTIFICATE-----([\s\S]+?)-----END CERTIFICATE-----/;
 const OID_COMMON_NAME = '2.5.4.3';
 const OID_RSA_ENCRYPTION = '1.2.840.113549.1.1.1';
 const OID_EC_PUBLIC_KEY = '1.2.840.10045.2.1';
 
-function pemToDer(text: string): Uint8Array {
-    const match = text.match(PEM_CERTIFICATE);
-    if (!match) throw new CertParseError('No "-----BEGIN CERTIFICATE-----" block found.');
-    try {
-        return Uint8Array.from(atob(match[1].replace(/\s/g, '')), c => c.charCodeAt(0));
-    } catch (_e) {
-        throw new CertParseError('The certificate body is not valid Base64.');
-    }
+const NO_CERTIFICATE = 'No "-----BEGIN CERTIFICATE-----" block found.';
+const ONLY_CSRS = 'This is a certificate signing request (CSR). Lint checks issued certificates; open the CSR in the Inspector instead.';
+
+interface FirstCertificate {
+    readonly der: Uint8Array;
+    /** Certificates in the text, counting any that cannot be read. */
+    readonly count: number;
+}
+
+/** The DER of the first certificate in the text, read the way the Inspector reads it, and how many certificates there are. */
+function firstCertificate(text: string): FirstCertificate {
+    const { blocks } = findPemBlocks(text);
+    const certificates = blocks.filter(block => block.kind === 'certificate');
+    const [first] = certificates;
+    // Every block findPemBlocks returns is a certificate or a CSR, so with no certificate, any block left is a CSR.
+    if (!first) throw new CertParseError(blocks.length > 0 ? ONLY_CSRS : NO_CERTIFICATE);
+    if ('error' in first) throw new CertParseError(first.error);
+    return { der: first.der, count: certificates.length };
 }
 
 const rawBytes = (block: asn1js.AsnType) => new Uint8Array((block as asn1js.BaseBlock).valueBeforeDecodeView);
@@ -120,17 +130,30 @@ function toContext(der: Uint8Array): CertContext {
     };
 }
 
+export interface ParsedInput {
+    /** The first certificate in the text, which is the one linted. */
+    readonly cert: CertContext;
+    /** Certificates in the text, e.g. 3 for a leaf pasted with two intermediates. */
+    readonly certificateCount: number;
+}
+
 /**
- * Parses the first PEM certificate in `text` into the normalized view the checks use.
- * @throws CertParseError for any input that is not a well-formed certificate.
+ * Parses the first PEM certificate in `text` into the normalized view the checks use, and counts the certificates after it.
+ * @throws CertParseError for any input whose first certificate is not well formed.
  */
-export function parseCertificate(text: string): CertContext {
-    const der = pemToDer(text);
+export function parseFirstCertificate(text: string): ParsedInput {
+    const { der, count } = firstCertificate(text);
     try {
-        return toContext(der);
+        return { cert: toContext(der), certificateCount: count };
     } catch (e: unknown) {
         if (e instanceof CertParseError) throw e;
         const reason = e instanceof Error ? e.message : String(e);
         throw new CertParseError(`The PEM block does not contain a valid X.509 certificate (${reason}).`);
     }
 }
+
+/**
+ * Parses the first PEM certificate in `text` into the normalized view the checks use.
+ * @throws CertParseError for any input that is not a well-formed certificate.
+ */
+export const parseCertificate = (text: string): CertContext => parseFirstCertificate(text).cert;

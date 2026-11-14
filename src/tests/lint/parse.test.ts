@@ -8,6 +8,7 @@ import {
     LEGACY_V1_SHA1,
     ED25519_LEAF,
 } from './fixtures';
+import { SAN_CSR } from '../inspectorFixtures';
 
 const toHex = (bytes: Uint8Array) => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 
@@ -132,9 +133,28 @@ describe('parseCertificate', () => {
         expect(() => parseCertificate('hello')).toThrow(CertParseError);
     });
 
-    it('rejects a CSR', () => {
+    it('says that a CSR is not a certificate', () => {
         const csr = PUBLIC_RSA_LEAF.replace(/CERTIFICATE/g, 'CERTIFICATE REQUEST');
         expect(() => parseCertificate(csr)).toThrow(CertParseError);
+        expect(() => parseCertificate(csr)).toThrow('This is a certificate signing request (CSR). Lint checks issued certificates; open the CSR in the Inspector instead.');
+    });
+
+    it('uses the certificate that follows a CSR', () => {
+        const cert = parseCertificate(`${SAN_CSR}\n${PUBLIC_RSA_LEAF}`);
+        expect(cert.subjectCommonNames).toEqual(['www.example.com']);
+    });
+
+    it('reads a certificate under the legacy X509 CERTIFICATE label', () => {
+        const cert = parseCertificate(PUBLIC_RSA_LEAF.replace(/CERTIFICATE/g, 'X509 CERTIFICATE'));
+        expect(cert.subjectCommonNames).toEqual(['www.example.com']);
+    });
+
+    it.each([
+        ['is cut off before the next one', `-----BEGIN CERTIFICATE-----\nMIIB\n${CA_CERT}`, 'The CERTIFICATE block has no matching END line.'],
+        ['is not base64', '-----BEGIN CERTIFICATE-----\n#!\n-----END CERTIFICATE-----', 'The CERTIFICATE block is not valid base64.'],
+    ])('says why the first certificate cannot be read when it %s', (_, text, message) => {
+        expect(() => parseCertificate(text)).toThrow(CertParseError);
+        expect(() => parseCertificate(text)).toThrow(message);
     });
 
     it('rejects a PEM block whose body is not a certificate', () => {

@@ -84,6 +84,15 @@ describe('lintCertificate', () => {
         expect(report.results).toEqual([]);
     });
 
+    it('counts the certificates in the input, and lints only the first', () => {
+        expect(lintCertificate(PUBLIC_RSA_LEAF, { now: MAY_2026 }).certificateCount).toBe(1);
+        const chain = lintCertificate(`${PUBLIC_RSA_LEAF}\n${CA_CERT}\n`, { now: MAY_2026 });
+        expect(chain.certificateCount).toBe(2);
+        expect(chain.isCaCertificate).toBe(false);
+        expect(chain).toEqual({ ...lintCertificate(PUBLIC_RSA_LEAF, { now: MAY_2026 }), certificateCount: 2 });
+        expect(lintCertificate(`${CA_CERT}\n${PUBLIC_RSA_LEAF}\n`, { now: MAY_2026 })).toMatchObject({ isCaCertificate: true, certificateCount: 2 });
+    });
+
     it('propagates parse errors', () => {
         expect(() => lintCertificate('not a certificate')).toThrow(CertParseError);
     });
