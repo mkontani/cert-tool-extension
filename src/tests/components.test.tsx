@@ -7,6 +7,7 @@ import PubKeyDeriver from '../components/PubKeyDeriver';
 import { MAX_PEM_BLOCKS } from '../inspector/pem';
 import { CA_CERT, ED25519_LEAF, PRIVATE_EC_LEAF } from './lint/fixtures';
 import { EMPTY_SAN_CERT, KITCHEN_SINK_CERT, MIXED_SAN_CERT, RSA_PSS_CERT, SAN_CSR } from './inspectorFixtures';
+import { EC_PKCS8, EC_PUBLIC, EC_SEC1, ENCRYPTED_PKCS8, RSA_PKCS1, RSA_PUBLIC } from './keyFixtures';
 
 // Mock clipboard API
 Object.assign(navigator, {
@@ -265,6 +266,28 @@ describe('CertInspector Component', () => {
 });
 
 describe('PubKeyDeriver Component', () => {
+    const derive = (pem: string) => {
+        render(<PubKeyDeriver />);
+        fireEvent.change(screen.getByLabelText(/Input \(Private Key, CSR, or Certificate\)/i), { target: { value: pem } });
+        fireEvent.click(screen.getByRole('button', { name: /Extract Public Key/i }));
+    };
+
+    it.each([
+        ['a PKCS#1 RSA key', RSA_PKCS1, RSA_PUBLIC, 'RSA'],
+        ['a SEC1 EC key', EC_SEC1, EC_PUBLIC, 'ECDSA P-256'],
+        ['a key pasted after a certificate', `${CA_CERT}\n${EC_PKCS8}\n`, EC_PUBLIC, 'ECDSA P-256'],
+    ])('extracts the same public key as openssl from %s', async (_, pem, expected, algorithm) => {
+        derive(pem);
+        const results = await screen.findByTestId('deriver-results');
+        expect(results).toHaveTextContent(`(from Private Key (${algorithm}))`);
+        expect(within(results).getByRole('textbox')).toHaveValue(`${expected}\n`);
+    });
+
+    it('explains how to use an encrypted key', async () => {
+        derive(ENCRYPTED_PKCS8);
+        expect(await screen.findByText(/This private key is encrypted\. Remove its passphrase first/)).toBeInTheDocument();
+    });
+
     it('should extract public key from a private key', async () => {
         render(<PubKeyDeriver />);
         const textarea = screen.getByLabelText(/Input \(Private Key, CSR, or Certificate\)/i) as HTMLTextAreaElement;

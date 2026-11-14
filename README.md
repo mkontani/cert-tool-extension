@@ -19,13 +19,13 @@ Generate cryptographic key pairs instantly using the Web Crypto API.
 Create Certificate Signing Requests (CSR) with a user-friendly form.
 ![CSR Generation](screenshots/store/4-csr.png)
 - **Customizable DN**: Set Common Name, Organization, Country, and more.
-- **SAN Support**: Add multiple Subject Alternative Names (DNS, IP, Email, URI).
-- **Flexible Signing**: Sign the request using your own private key.
+- **SAN Support**: Add multiple Subject Alternative Names (DNS, IPv4/IPv6, Email, URI), separated by commas, spaces or new lines. Each one is checked before the CSR is made.
+- **Flexible Signing**: Sign the request with your own RSA, ECDSA (P-256, P-384, P-521) or Ed25519 key, in PKCS#8, PKCS#1 or SEC1 PEM. RSA signs with SHA-256, and ECDSA with the hash that matches its curve.
 
 ### 3. Public Key Derivation
 Extract the public key component from various sources.
 ![Public Key Derivation](screenshots/store/5-derive.png)
-- **Input Types**: Supports Private Keys (PKCS#8/PKCS#1), Certificates, or CSRs.
+- **Input Types**: Supports Private Keys (PKCS#8, PKCS#1 or SEC1), Certificates, or CSRs.
 - **Auto-Detection**: Automatically identifies the input type and algorithm.
 
 ### 4. Certificate/CSR Inspector

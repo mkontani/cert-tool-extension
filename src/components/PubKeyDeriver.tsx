@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import forge from 'node-forge';
 import { Key, ArrowDownCircle, Copy, Check, Download, AlertCircle, Loader2 } from 'lucide-react';
+import { toPem } from '../keys/pem';
+import { describeKey, publicKeyOf, readPrivateKey } from '../keys/privateKey';
 
 export default function PubKeyDeriver() {
     const [inputPem, setInputPem] = useState('');
@@ -37,64 +39,10 @@ export default function PubKeyDeriver() {
 
         try {
             if (inputPem.includes('PRIVATE KEY')) {
-                const pkcs8Uint8 = decodePem(inputPem);
-
-                // Surgical Detection via ASN.1 - Must use binary string for fromDer
-                const asn1 = forge.asn1.fromDer(forge.util.binary.raw.encode(pkcs8Uint8));
-                if (asn1.type !== forge.asn1.Type.SEQUENCE) throw new Error("Not a valid PKCS#8 SEQUENCE");
-
-                const algIdSeq = (asn1 as any).value[1];
-                const algOid = forge.asn1.derToOid(algIdSeq.value[0].value);
-
-                if (algOid === '1.2.840.10045.2.1') {
-                    // EC Key
-                    const curveOid = forge.asn1.derToOid(algIdSeq.value[1].value);
-
-                    let alg: any = null;
-                    if (curveOid === '1.2.840.10045.3.1.7') alg = { name: 'ECDSA', namedCurve: 'P-256' };
-                    else if (curveOid === '1.3.132.0.34') alg = { name: 'ECDSA', namedCurve: 'P-384' };
-                    else if (curveOid === '1.3.132.0.35') alg = { name: 'ECDSA', namedCurve: 'P-521' };
-
-                    if (!alg) throw new Error(`Unsupported EC Curve OID: ${curveOid}`);
-
-                    // JWK Trick to bypass export restrictions
-                    const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Uint8 as any, alg, true, ['sign']);
-                    const jwk = await window.crypto.subtle.exportKey('jwk', privKey);
-                    const { d: _d, ...publicJwk } = jwk;
-                    const pubKey = await window.crypto.subtle.importKey('jwk', publicJwk, alg, true, []);
-                    const spki = await window.crypto.subtle.exportKey('spki', pubKey);
-
-                    // encode64 expects a binary string, not Uint8Array
-                    setPublicKey(formatPem('PUBLIC KEY', forge.util.encode64(forge.util.binary.raw.encode(new Uint8Array(spki)))));
-                    setSourceType(`Private Key (ECDSA ${alg.namedCurve})`);
-                    setIsProcessing(false);
-                    return;
-
-                } else if (algOid === '1.3.101.112') {
-                    // Ed25519
-                    const privKey = await window.crypto.subtle.importKey('pkcs8', pkcs8Uint8 as any, { name: 'Ed25519' }, true, ['sign']);
-                    const jwk = await window.crypto.subtle.exportKey('jwk', privKey);
-                    const { d: _d, ...publicJwk } = jwk;
-                    const pubKey = await window.crypto.subtle.importKey('jwk', publicJwk, { name: 'Ed25519' }, true, []);
-                    const spki = await window.crypto.subtle.exportKey('spki', pubKey);
-
-                    setPublicKey(formatPem('PUBLIC KEY', forge.util.encode64(forge.util.binary.raw.encode(new Uint8Array(spki)))));
-                    setSourceType('Private Key (Ed25519)');
-                    setIsProcessing(false);
-                    return;
-
-                } else if (algOid === '1.2.840.113549.1.1.1') {
-                    // RSA Key
-                    const priv = forge.pki.privateKeyFromPem(inputPem);
-                    const pub = forge.pki.setRsaPublicKey((priv as any).n, (priv as any).e);
-                    setPublicKey(forge.pki.publicKeyToPem(pub));
-                    setSourceType('Private Key (RSA)');
-                    setIsProcessing(false);
-                    return;
-                } else {
-                    throw new Error(`Unsupported Private Key Algorithm OID: ${algOid}`);
-                }
-
+                // PKCS#8, PKCS#1 or SEC1; the key block is found even when a certificate comes first.
+                const key = readPrivateKey(inputPem);
+                setPublicKey(toPem('PUBLIC KEY', await publicKeyOf(key)));
+                setSourceType(`Private Key (${describeKey(key.algorithm)})`);
             } else if (inputPem.includes('CERTIFICATE REQUEST')) {
                 // Robust ASN.1 Extraction for CSR
                 const der = forge.util.binary.raw.encode(new Uint8Array(decodePem(inputPem)));

@@ -9,6 +9,29 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
   - Each certificate is a node with its name, key, and days left, colored like the badges on pages. It is joined to the next one by an "issued by" link when that certificate issued it. Click a node to see its details, as before.
   - An issuer listed out of order, or missing from the input, is named under the certificate. This shows at a glance when a `fullchain.pem` is in the wrong order or lacks an intermediate.
   - When Chrome's chain for a site stops below the root, the diagram names the root and says Chrome trusts the last certificate directly. Chrome's root store includes some intermediates, such as Google Trust Services' WE2, so youtube.com's chain ends there.
+- Gen CSR: SANs can be separated by spaces or new lines as well as commas.
+- Gen CSR: subject fields are trimmed and written as UTF8String, as RFC 5280 asks.
+  - The country is written as PrintableString and must be a two-letter code. The email address is written as IA5String and must be a valid address.
+  - Before, every field was written as PrintableString, which cannot hold `@`, `&` or non-ASCII letters. CSRs with an email address or a Japanese organization name were malformed.
+  - Fields longer than RFC 5280 allows are refused with a message: 64 characters for Common Name, Organization and OU, and 128 for State and Locality. So are fields with control characters or broken characters.
+- Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
+
+### Fixed
+- Gen CSR: CSRs signed with an RSA key used SHA-1 (`sha1WithRSAEncryption`), which public CAs reject. They now use SHA-256 (`sha256WithRSAEncryption`). ECDSA keys sign with SHA-256, SHA-384 or SHA-512 to match the curve, as before.
+- Gen CSR: SANs were left out of CSRs signed with an Ed25519 key.
+- Gen CSR and Derive PubKey: PKCS#1 keys (`BEGIN RSA PRIVATE KEY`) and SEC1 keys (`BEGIN EC PRIVATE KEY`) failed with "Cannot read properties of undefined".
+  - Both formats are now read, including the `EC PARAMETERS` block that `openssl ecparam -genkey` writes before the key.
+  - A key pasted after a certificate is found.
+  - An encrypted key gets a message saying how to remove its passphrase.
+  - An unsupported key, such as X25519 or an OpenSSH key, gets a message naming what is supported.
+  - An EC key whose curve is spelled out as explicit parameters gets a message with the openssl command that names it.
+- Gen CSR: SANs were sorted into types incorrectly.
+  - With an RSA key, IPv6 addresses were requested as DNS names.
+  - Values such as `1.2.3` failed with a node-forge error.
+  - Now each SAN is checked. IPv4 and IPv6 addresses become IP SANs, `user@host` an email, and `scheme://…` a URI.
+  - Anything else must be a valid DNS name: labels of up to 63 characters that do not start or end with a hyphen, no trailing dot, and `*` only as the whole leftmost label.
+  - Non-ASCII names must be written in punycode.
+  - The error names the entry that is wrong.
 
 ## [1.3.0] - 2026-11-12
 
