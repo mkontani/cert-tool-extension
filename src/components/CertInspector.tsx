@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { issuerLinks } from '../inspector/chain';
 import { inspect } from '../inspector/inspect';
 import { findPemBlocks, MAX_PEM_BLOCKS, type PemBlock } from '../inspector/pem';
@@ -8,6 +8,7 @@ import { validityOf } from '../page/validity';
 import { chainRole, chainToPem } from '../site/display';
 import ChainDiagram, { type ChainEntry } from './ChainDiagram';
 import EntryList from './EntryList';
+import ErrorBanner from './ErrorBanner';
 import PageScanButton from './PageScanButton';
 import type { SiteCertificates } from '../site/messages';
 import SiteCertButton, { type SiteCertApi } from './SiteCertButton';
@@ -146,13 +147,7 @@ export default function CertInspector({ siteApi }: CertInspectorProps = {}) {
                 <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '-0.5rem 0 1rem' }}>Only the first {MAX_PEM_BLOCKS} blocks are listed.</p>
             )}
             <div id={OUTPUT_ID}>
-                {shownError && (
-                    <div role="alert" style={{
-                        padding: '1rem', background: 'rgba(239, 68, 68, 0.2)',
-                        border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '8px',
-                        color: '#fca5a5', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-                    }}><AlertCircle size={18} /> {shownError}</div>
-                )}
+                {shownError && <ErrorBanner>{shownError}</ErrorBanner>}
                 {info && (
                     <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--surface-border)' }} data-testid="inspector-results">
                         <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>{info.type}</h3>

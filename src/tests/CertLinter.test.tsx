@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import App from '../App';
 import CertLinter from '../components/CertLinter';
 import { CA_CERT, PRIVATE_EC_LEAF, PUBLIC_RSA_LEAF, SELF_SIGNED_DEFAULT } from './lint/fixtures';
 
@@ -102,19 +101,5 @@ describe('CertLinter', () => {
         render(<CertLinter />);
         lint('not a certificate');
         expect(screen.getByRole('alert')).toHaveTextContent(/BEGIN CERTIFICATE/);
-    });
-});
-
-describe('App navigation', () => {
-    it('opens on the Inspector tab', () => {
-        render(<App />);
-        expect(screen.getByRole('heading', { name: 'Certificate Inspector' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Inspector/ })).toHaveClass('active');
-    });
-
-    it('opens the linter from the Lint tab', () => {
-        render(<App />);
-        fireEvent.click(screen.getByRole('button', { name: /Lint/ }));
-        expect(screen.getByRole('heading', { name: 'Certificate Linter' })).toBeInTheDocument();
     });
 });

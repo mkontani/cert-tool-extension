@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { FileSignature, Copy, Download, AlertCircle, Check } from 'lucide-react';
+import { FileSignature, Download } from 'lucide-react';
 import { createCsr } from '../keys/csr';
+import CopyButton from './CopyButton';
+import ErrorBanner from './ErrorBanner';
 
 export default function CSRGenerator() {
     const [formData, setFormData] = useState({
@@ -16,7 +18,6 @@ export default function CSRGenerator() {
     const [privateKey, setPrivateKey] = useState('');
     const [csrOutput, setCsrOutput] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [copyStatus, setCopyStatus] = useState(false);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -38,13 +39,6 @@ export default function CSRGenerator() {
             console.error('CSR generation error:', e);
             setError(e instanceof Error && e.message ? e.message : 'Failed to generate CSR');
         }
-    };
-
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(csrOutput).then(() => {
-            setCopyStatus(true);
-            setTimeout(() => setCopyStatus(false), 2000);
-        });
     };
 
     const downloadCSR = async () => {
@@ -93,24 +87,15 @@ export default function CSRGenerator() {
                 <textarea value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder="-----BEGIN PRIVATE KEY-----..." rows={4} style={{ fontFamily: 'monospace', fontSize: '0.8rem' }} />
             </div>
             <button className="btn" onClick={generateCSR} style={{ width: '100%', marginBottom: '1.5rem' }}>Generate CSR</button>
-            {error && (
-                <div style={{
-                    padding: '1rem', background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '8px',
-                    color: '#fca5a5', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-                }}><AlertCircle size={18} /> {error}</div>
-            )}
+            {error && <ErrorBanner>{error}</ErrorBanner>}
             {csrOutput && (
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <label style={{ margin: 0, color: '#ec4899' }}>CSR (PEM)</label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={copyToClipboard}>
-                                {copyStatus ? <Check size={14} /> : <Copy size={14} />}
-                                <span style={{ marginLeft: '4px' }}>{copyStatus ? 'Copied' : 'Copy'}</span>
-                            </button>
-                            <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={downloadCSR}>
-                                <Download size={14} /> <span style={{ marginLeft: '4px' }}>Save</span>
+                            <CopyButton text={csrOutput} label="CSR" />
+                            <button type="button" className="btn-secondary btn-small" onClick={downloadCSR}>
+                                <Download size={14} aria-hidden /> <span>Save</span>
                             </button>
                         </div>
                     </div>

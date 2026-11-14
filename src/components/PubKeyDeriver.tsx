@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import forge from 'node-forge';
-import { Key, ArrowDownCircle, Copy, Check, Download, AlertCircle, Loader2 } from 'lucide-react';
+import { Key, ArrowDownCircle, Download, Loader2 } from 'lucide-react';
+import CopyButton from './CopyButton';
+import ErrorBanner from './ErrorBanner';
 import { toPem } from '../keys/pem';
 import { describeKey, publicKeyOf, readPrivateKey } from '../keys/privateKey';
 
@@ -9,7 +11,6 @@ export default function PubKeyDeriver() {
     const [publicKey, setPublicKey] = useState('');
     const [sourceType, setSourceType] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [copyStatus, setCopyStatus] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
     const decodePem = (pem: string): Uint8Array => {
@@ -93,13 +94,6 @@ export default function PubKeyDeriver() {
         }
     };
 
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(publicKey).then(() => {
-            setCopyStatus(true);
-            setTimeout(() => setCopyStatus(false), 2000);
-        });
-    };
-
     const downloadKey = async () => {
         const filename = 'public_key.pem';
         if ('showSaveFilePicker' in window) {
@@ -147,15 +141,7 @@ export default function PubKeyDeriver() {
                 Extract Public Key
             </button>
             <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-            {error && (
-                <div style={{
-                    padding: '1rem', background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '8px',
-                    color: '#fca5a5', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-                }}>
-                    <AlertCircle size={18} /> {error}
-                </div>
-            )}
+            {error && <ErrorBanner>{error}</ErrorBanner>}
             {publicKey && (
                 <div data-testid="deriver-results">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -163,12 +149,9 @@ export default function PubKeyDeriver() {
                             Derived Public Key {sourceType && <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: '0.5rem' }}> (from {sourceType})</span>}
                         </label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={copyToClipboard}>
-                                {copyStatus ? <Check size={14} /> : <Copy size={14} />}
-                                <span style={{ marginLeft: '4px' }}>{copyStatus ? 'Copied' : 'Copy'}</span>
-                            </button>
-                            <button className="btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={downloadKey}>
-                                <Download size={14} /> <span style={{ marginLeft: '4px' }}>Save</span>
+                            <CopyButton text={publicKey} label="public key" />
+                            <button type="button" className="btn-secondary btn-small" onClick={downloadKey}>
+                                <Download size={14} aria-hidden /> <span>Save</span>
                             </button>
                         </div>
                     </div>
