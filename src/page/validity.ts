@@ -1,3 +1,5 @@
+import { DAY_MS, isExpiringSoon } from '../shared/expiry';
+
 /** Where "now" falls in a certificate's validity period. */
 export type ValidityState = 'valid' | 'expiring' | 'expired' | 'not-yet-valid';
 
@@ -7,10 +9,7 @@ export interface Validity {
     readonly days: number;
 }
 
-/** Fewer days left than this, and the certificate is flagged as expiring. */
-export const EXPIRING_SOON_DAYS = 30;
-
-const DAY_MS = 86_400_000;
+export { EXPIRING_SOON_DAYS } from '../shared/expiry';
 
 const plural = (count: number, unit: string) => `${count} ${unit}${count === 1 ? '' : 's'}`;
 
@@ -25,8 +24,7 @@ export function validityOf(notBefore: string | undefined, notAfter: string | und
     if (now < start) return { state: 'not-yet-valid', days: Math.ceil((start - now) / DAY_MS) };
     // RFC 5280: the validity period includes notAfter itself.
     if (now > end) return { state: 'expired', days: Math.floor((now - end) / DAY_MS) };
-    const days = Math.floor((end - now) / DAY_MS);
-    return { state: days < EXPIRING_SOON_DAYS ? 'expiring' : 'valid', days };
+    return { state: isExpiringSoon(end - now) ? 'expiring' : 'valid', days: Math.floor((end - now) / DAY_MS) };
 }
 
 /** A sentence for the details card, e.g. "Expires in 23 days". */

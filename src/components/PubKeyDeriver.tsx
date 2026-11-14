@@ -145,7 +145,7 @@ export default function PubKeyDeriver() {
             {publicKey && (
                 <div data-testid="deriver-results">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label style={{ margin: 0, color: '#06b6d4' }}>
+                        <label htmlFor="deriver-output" style={{ margin: 0, color: '#06b6d4' }}>
                             Derived Public Key {sourceType && <span style={{ opacity: 0.7, fontWeight: 400, marginLeft: '0.5rem' }}> (from {sourceType})</span>}
                         </label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -155,7 +155,7 @@ export default function PubKeyDeriver() {
                             </button>
                         </div>
                     </div>
-                    <textarea readOnly value={publicKey} rows={6} style={{ fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre' }} />
+                    <textarea id="deriver-output" readOnly value={publicKey} rows={6} style={{ fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre' }} />
                 </div>
             )}
         </div>

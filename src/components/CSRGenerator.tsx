@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { FileSignature, Download } from 'lucide-react';
 import { createCsr } from '../keys/csr';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
 
 export default function CSRGenerator() {
+    /** Prefix of this form's element ids, so its labels name their fields. */
+    const id = useId();
     const [formData, setFormData] = useState({
         commonName: '',
         organization: '',
@@ -73,25 +75,25 @@ export default function CSRGenerator() {
                 <h2 style={{ margin: 0 }}>CSR Generation</h2>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div><label>Common Name</label><input name="commonName" value={formData.commonName} onChange={handleInputChange} placeholder="e.g. example.com" /></div>
-                <div><label>Organization</label><input name="organization" value={formData.organization} onChange={handleInputChange} placeholder="Acme Corp" /></div>
-                <div><label>OU</label><input name="organizationalUnit" value={formData.organizationalUnit} onChange={handleInputChange} placeholder="IT" /></div>
-                <div><label>Country (2 chars)</label><input name="country" value={formData.country} onChange={handleInputChange} placeholder="US" maxLength={2} /></div>
-                <div><label>State</label><input name="state" value={formData.state} onChange={handleInputChange} placeholder="California" /></div>
-                <div><label>Locality</label><input name="locality" value={formData.locality} onChange={handleInputChange} placeholder="San Francisco" /></div>
-                <div style={{ gridColumn: 'span 2' }}><label>Email</label><input name="email" value={formData.email} onChange={handleInputChange} placeholder="admin@example.com" /></div>
-                <div style={{ gridColumn: 'span 2' }}><label>SANs (comma separated)</label><input name="sans" value={formData.sans} onChange={handleInputChange} placeholder="www.example.com, 10.0.0.1" /></div>
+                <div><label htmlFor={`${id}-commonName`}>Common Name</label><input id={`${id}-commonName`} name="commonName" value={formData.commonName} onChange={handleInputChange} placeholder="e.g. example.com" /></div>
+                <div><label htmlFor={`${id}-organization`}>Organization</label><input id={`${id}-organization`} name="organization" value={formData.organization} onChange={handleInputChange} placeholder="Acme Corp" /></div>
+                <div><label htmlFor={`${id}-organizationalUnit`}>OU</label><input id={`${id}-organizationalUnit`} name="organizationalUnit" value={formData.organizationalUnit} onChange={handleInputChange} placeholder="IT" /></div>
+                <div><label htmlFor={`${id}-country`}>Country (2 chars)</label><input id={`${id}-country`} name="country" value={formData.country} onChange={handleInputChange} placeholder="US" maxLength={2} /></div>
+                <div><label htmlFor={`${id}-state`}>State</label><input id={`${id}-state`} name="state" value={formData.state} onChange={handleInputChange} placeholder="California" /></div>
+                <div><label htmlFor={`${id}-locality`}>Locality</label><input id={`${id}-locality`} name="locality" value={formData.locality} onChange={handleInputChange} placeholder="San Francisco" /></div>
+                <div style={{ gridColumn: 'span 2' }}><label htmlFor={`${id}-email`}>Email</label><input id={`${id}-email`} name="email" value={formData.email} onChange={handleInputChange} placeholder="admin@example.com" /></div>
+                <div style={{ gridColumn: 'span 2' }}><label htmlFor={`${id}-sans`}>SANs (separated by commas, spaces or new lines)</label><input id={`${id}-sans`} name="sans" value={formData.sans} onChange={handleInputChange} placeholder="www.example.com, 10.0.0.1" /></div>
             </div>
             <div style={{ marginTop: '0.5rem' }}>
-                <label>Private Key (PEM) *</label>
-                <textarea value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder="-----BEGIN PRIVATE KEY-----..." rows={4} style={{ fontFamily: 'monospace', fontSize: '0.8rem' }} />
+                <label htmlFor={`${id}-key`}>Private Key (PEM) *</label>
+                <textarea id={`${id}-key`} value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder="-----BEGIN PRIVATE KEY-----..." rows={4} style={{ fontFamily: 'monospace', fontSize: '0.8rem' }} />
             </div>
             <button className="btn" onClick={generateCSR} style={{ width: '100%', marginBottom: '1.5rem' }}>Generate CSR</button>
             {error && <ErrorBanner>{error}</ErrorBanner>}
             {csrOutput && (
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label style={{ margin: 0, color: '#ec4899' }}>CSR (PEM)</label>
+                        <label htmlFor={`${id}-csr`} style={{ margin: 0, color: '#ec4899' }}>CSR (PEM)</label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <CopyButton text={csrOutput} label="CSR" />
                             <button type="button" className="btn-secondary btn-small" onClick={downloadCSR}>
@@ -99,7 +101,7 @@ export default function CSRGenerator() {
                             </button>
                         </div>
                     </div>
-                    <textarea readOnly value={csrOutput} rows={8} style={{ fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre' }} />
+                    <textarea id={`${id}-csr`} readOnly value={csrOutput} rows={8} style={{ fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre' }} />
                 </div>
             )}
         </div>

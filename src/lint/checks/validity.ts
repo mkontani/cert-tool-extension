@@ -1,7 +1,7 @@
 import type { CheckDefinition } from '../types';
 import { DAY_MS, NOT_APPLICABLE, PASS, formatDate, issue, validityDays } from './common';
+import { EXPIRING_SOON_DAYS, isExpiringSoon } from '../../shared/expiry';
 
-const EXPIRY_WARNING_DAYS = 30;
 const APPLE_MAX_DAYS = 825;
 const APPLE_RULE_START = new Date('2019-07-01T00:00:00Z');
 
@@ -37,13 +37,13 @@ export const alreadyValid: CheckDefinition = {
 
 export const notExpiringSoon: CheckDefinition = {
     id: 'not_expiring_soon',
-    title: `Does not expire within ${EXPIRY_WARNING_DAYS} days`,
+    title: `Does not expire within ${EXPIRING_SOON_DAYS} days`,
     citation: 'Operational best practice',
     profiles: ['public', 'private'],
     run: (cert, env) => {
         const remainingMs = cert.notAfter.getTime() - env.now.getTime();
         if (remainingMs < 0) return NOT_APPLICABLE;
-        if (remainingMs > EXPIRY_WARNING_DAYS * DAY_MS) return PASS;
+        if (!isExpiringSoon(remainingMs)) return PASS;
         const days = Math.floor(remainingMs / DAY_MS);
         return issue('warn', `Expires in ${days} day(s), on ${formatDate(cert.notAfter)}.`);
     },

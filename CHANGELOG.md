@@ -8,6 +8,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Inspector: SHA-256 and SHA-1 fingerprints of each certificate, written as `openssl x509 -fingerprint` and Chrome's certificate viewer write them, and the public key pin (`pin-sha256`, RFC 7469) of each certificate and CSR. Each one has its own Copy button. The pin stays the same when a certificate is renewed with the same key, so it shows whether a renewal changed the key.
 
 ### Changed
+- Cert Tool now requires Chrome 137 or later (`minimum_chrome_version`). Ed25519 keys rely on Web Crypto support that shipped in Chrome 137; on older versions, generating or using one failed with "Algorithm: Unrecognized name".
 - The tool tabs follow the WAI-ARIA tabs pattern: screen readers announce them as tabs, and the arrow keys, Home and End move between them. Tab moves from the selected tab into its panel.
 - Inspector: a pasted chain, or the chain of the current site, is now drawn as a diagram instead of a row of buttons.
   - Each certificate is a node with its name, key, and days left, colored like the badges on pages. It is joined to the next one by an "issued by" link when that certificate issued it. Click a node to see its details, as before.
@@ -21,6 +22,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 - Gen CSR no longer creates a throwaway RSA key before signing with an EC or Ed25519 key, which could freeze the popup for a moment.
 
 ### Fixed
+- Gen KeyPair, Gen CSR and Derive PubKey: every field and output now has its label attached, so screen readers announce what it is and clicking a label focuses its field. These were the key size and curve, the CSR form's fields and private key, and the generated keys, CSR and public key.
+- Lint warned that a certificate with exactly 30 days left was expiring soon, while the badges on pages and the Inspector showed it as valid ("30d left"). All three now share one rule: fewer than 30 days left.
 - Switching tabs no longer clears a tool. Before, a generated key pair, a filled-in CSR form or a pasted certificate was lost as soon as another tab was opened. Everything is still kept only while the popup is open, and nothing is saved.
 - Copy buttons: when Chrome refused to write to the clipboard, for example because the popup was not focused, nothing happened. The button now shows "Copy failed", and screen readers are told to copy the text by hand. A successful copy is announced too.
 - Errors in Gen KeyPair, Gen CSR and Derive PubKey are now announced to screen readers, as they already were in the Inspector and Lint.

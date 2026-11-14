@@ -7,6 +7,8 @@ import {
     brMaxValidity,
 } from '../../lint/checks/validity';
 import { makeCert, makeEnv, validityOfDays } from './certFactory';
+import { validityOf } from '../../page/validity';
+import { DAY_MS } from '../../lint/checks/common';
 
 const at = (iso: string) => makeEnv({ now: new Date(iso) });
 
@@ -35,8 +37,23 @@ describe('notExpiringSoon', () => {
         expect(notExpiringSoon.run(makeCert(), at('2026-05-30T23:59:58Z')).status).toBe('pass');
     });
 
-    it('warns with 30 days or fewer left', () => {
+    it('passes with exactly 30 days left, as the badges, the Inspector and the chain diagram show it', () => {
+        expect(notExpiringSoon.run(makeCert(), at('2026-05-30T23:59:59Z')).status).toBe('pass');
+    });
+
+    it('warns with fewer than 30 days left', () => {
         expect(notExpiringSoon.run(makeCert(), at('2026-05-31T00:00:00Z'))).toMatchObject({ status: 'issue', severity: 'warn' });
+    });
+
+    it('agrees with the page badges on every certificate', () => {
+        const cert = makeCert();
+        const end = cert.notAfter.getTime();
+        for (const offset of [-1000, 0, 1000]) {
+            const now = end - 30 * DAY_MS + offset;
+            const linted = notExpiringSoon.run(cert, at(new Date(now).toISOString())).status;
+            const badge = validityOf(cert.notBefore.toUTCString(), cert.notAfter.toUTCString(), now)?.state;
+            expect(linted === 'issue').toBe(badge === 'expiring');
+        }
     });
 
     it('is not applicable once expired (covered by notExpired)', () => {
