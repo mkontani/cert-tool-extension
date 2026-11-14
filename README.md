@@ -63,6 +63,8 @@ Cert Tool runs entirely in your browser and sends nothing to its developer or an
 
 ## Installation
 
+Cert Tool needs Chrome 137 or later, the first version whose Web Crypto supports Ed25519.
+
 1. Clone this repository.
 2. Run `npm install` to install dependencies.
 3. Run `npm run build` to generate the production build in the `dist` folder.
