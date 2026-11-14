@@ -13,7 +13,7 @@ const POPUP_TARGET = 'POPUP-TARGET';
 /** What Chrome says when another extension's frame is in the tab. */
 const OTHER_EXTENSION_FRAME = 'Cannot access a chrome-extension:// URL of different extension';
 
-type Listener = (...args: any[]) => void;
+type Listener = (...args: unknown[]) => void;
 type Source = chrome.debugger.Debuggee;
 type Emit = (method: string, params: unknown, source?: Source | number) => void;
 

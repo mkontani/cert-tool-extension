@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import forge from 'node-forge';
 import { inspect } from '../../inspector/inspect';
 import { findPemBlocks } from '../../inspector/pem';
 import { INTERMEDIATE_B64, LEAF_B64 } from '../siteFixtures';
@@ -37,5 +38,29 @@ describe('inspect', () => {
         const result = inspect(block.der, block.kind);
         expect(result.issuer).toBeUndefined();
         expect(result.issuerLabel).toBeUndefined();
+    });
+});
+
+describe('inspect on input that is not shaped like a certificate or CSR', () => {
+    const { asn1 } = forge;
+    const sequence = (...value: forge.asn1.Asn1[]) => asn1.create(asn1.Class.UNIVERSAL, asn1.Type.SEQUENCE, true, value);
+    const integer = (n: number) => asn1.create(asn1.Class.UNIVERSAL, asn1.Type.INTEGER, false, String.fromCharCode(n));
+    const derOf = (node: forge.asn1.Asn1) => Uint8Array.from(asn1.toDer(node).getBytes(), c => c.charCodeAt(0));
+
+    const csrDer = () => {
+        const [block] = findPemBlocks(SAN_CSR).blocks;
+        if (!block || 'error' in block) throw new Error('no CSR');
+        return block.der;
+    };
+
+    it.each([
+        ['a certificate that is an INTEGER', derOf(integer(1)), 'certificate'],
+        ['a certificate whose TBS is an INTEGER', derOf(sequence(integer(1))), 'certificate'],
+        ['a certificate whose TBS is cut short', derOf(sequence(sequence(integer(1)))), 'certificate'],
+        ['a certificate read as a CSR', der(LEAF_B64), 'csr'],
+        ['a CSR read as a certificate', csrDer(), 'certificate'],
+        ['a CSR that is an empty SEQUENCE', derOf(sequence()), 'csr'],
+    ] as const)('says the structure is unexpected for %s', (_, input, kind) => {
+        expect(() => inspect(input, kind)).toThrow('Unexpected ASN.1 structure.');
     });
 });

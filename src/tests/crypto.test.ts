@@ -7,7 +7,7 @@ ek3dw90QxMcaYregfRy76E7Av/WhRANCAATjhUmhCOo9SoyWrf98WQJ385TFrTmV
 NV5Vc09vb+TWlj5mjh6ys8KY/C52wvKSD3DBmhiRXWLetdGR7rR3Awvm
 -----END PRIVATE KEY-----`;
 
-function decodePem(pem: string): Uint8Array {
+function decodePem(pem: string): Uint8Array<ArrayBuffer> {
     const match = pem.match(/-----BEGIN [^-]+-----([\s\S]+?)-----END [^-]+-----/);
     const base64 = (match ? match[1] : pem).replace(/\s/g, '');
     const binary = atob(base64);
@@ -16,8 +16,11 @@ function decodePem(pem: string): Uint8Array {
     return buffer;
 }
 
-async function extractPublicKeyJwk(pkcs8Buffer: Uint8Array, alg: any): Promise<CryptoKey> {
-    const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer as any, alg, true, ['sign']);
+const children = (node: forge.asn1.Asn1): forge.asn1.Asn1[] => (Array.isArray(node.value) ? node.value : []);
+const bytes = (node: forge.asn1.Asn1): string => (typeof node.value === 'string' ? node.value : '');
+
+async function extractPublicKeyJwk(pkcs8Buffer: Uint8Array<ArrayBuffer>, alg: EcKeyImportParams | Algorithm): Promise<CryptoKey> {
+    const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
     const jwk = await crypto.subtle.exportKey('jwk', privKey);
 
     // Create public JWK (remove private part 'd' and add key_ops)
@@ -31,11 +34,11 @@ describe('ECDSA Crypto Fix', () => {
 
         // 1. Detect Curve (Surgical)
         const asn1 = forge.asn1.fromDer(forge.util.createBuffer(new Uint8Array(pkcs8Buffer)));
-        const algIdSeq = (asn1 as any).value[1];
-        const algOid = forge.asn1.derToOid(algIdSeq.value[0].value);
+        const [, algIdSeq] = children(asn1);
+        const algOid = forge.asn1.derToOid(bytes(children(algIdSeq)[0]));
         expect(algOid).toBe('1.2.840.10045.2.1');
 
-        const curveOid = forge.asn1.derToOid(algIdSeq.value[1].value);
+        const curveOid = forge.asn1.derToOid(bytes(children(algIdSeq)[1]));
         expect(curveOid).toBe('1.2.840.10045.3.1.7'); // P-256
 
         // 2. Import and extract public part via JWK
@@ -51,7 +54,7 @@ describe('ECDSA Crypto Fix', () => {
     it('should sign data with ECDSA and match standard DER format', async () => {
         const pkcs8Buffer = decodePem(P256_PRIVATE_KEY_PEM);
         const alg = { name: 'ECDSA', namedCurve: 'P-256' };
-        const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer as any, alg, true, ['sign']);
+        const privKey = await crypto.subtle.importKey('pkcs8', pkcs8Buffer, alg, true, ['sign']);
 
         const data = new TextEncoder().encode('test data');
         const rawSig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privKey, data);
