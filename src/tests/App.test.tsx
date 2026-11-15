@@ -4,7 +4,8 @@ import '@testing-library/jest-dom';
 import App from '../App';
 
 const tab = (name: string) => screen.getByRole('tab', { name });
-const TAB_NAMES = ['Gen KeyPair', 'Gen CSR', 'Derive PubKey', 'Inspector', 'Lint'];
+/** The main tool first, then by how close each one is to it; the generators last, in the order they are used. */
+const TAB_NAMES = ['Inspector', 'Lint', 'Public Key', 'Gen KeyPair', 'Gen CSR'];
 
 describe('App tabs', () => {
     it('lists the tools as tabs and opens on the Inspector', () => {
@@ -26,6 +27,31 @@ describe('App tabs', () => {
         expect(screen.queryByRole('heading', { name: 'Certificate Inspector' })).toBeNull();
     });
 
+    it('leaves the arrow keys of the Public Key sub-tabs to them, without changing the tool', () => {
+        render(<App />);
+        fireEvent.click(tab('Public Key'));
+        tab('Derive').focus();
+        fireEvent.keyDown(tab('Derive'), { key: 'ArrowRight' });
+        expect(tab('Match')).toHaveFocus();
+        expect(tab('Public Key')).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('heading', { name: 'Key Match' })).toBeVisible();
+    });
+
+    it('puts the icon of its tab before the heading of every tool', () => {
+        const { container } = render(<App />);
+        const iconOf = (element: Element | null | undefined) => [...element?.classList ?? []].find(name => name.startsWith('lucide-'));
+        const headings = [...container.querySelectorAll('h2')];
+        expect(headings.map(heading => heading.textContent)).toEqual([
+            'Certificate Inspector', 'Certificate Linter', 'Public Key Derivation', 'Key Match', 'Key Pair Generation', 'CSR Generation',
+        ]);
+        for (const heading of headings) expect(heading.previousElementSibling?.tagName).toBe('svg');
+        const tabIcons = [...container.querySelectorAll('[role=tab]')].map(tab => iconOf(tab.querySelector('svg')));
+        const headingIcons = headings.map(heading => iconOf(heading.previousElementSibling));
+        // Inspector, Lint, Public Key (its Derive and Match sub-tabs, which follow the tool tabs), Gen KeyPair, Gen CSR.
+        expect(headingIcons).toEqual([tabIcons[0], tabIcons[1], tabIcons[5], tabIcons[6], tabIcons[3], tabIcons[4]]);
+        expect(new Set(headingIcons).size).toBe(headingIcons.length);
+    });
+
     it('keeps what was typed in a tab while another tab is open', () => {
         render(<App />);
         const input = screen.getByLabelText('Input (Certificate or CSR)');
@@ -42,14 +68,16 @@ describe('App tabs', () => {
         press('ArrowRight');
         expect(tab('Lint')).toHaveFocus();
         expect(tab('Lint')).toHaveAttribute('aria-selected', 'true');
-        press('ArrowRight');
-        expect(tab('Gen KeyPair')).toHaveFocus();
         press('ArrowLeft');
-        expect(tab('Lint')).toHaveFocus();
-        press('Home');
-        expect(tab('Gen KeyPair')).toHaveAttribute('aria-selected', 'true');
+        expect(tab('Inspector')).toHaveFocus();
+        press('ArrowLeft');
+        expect(tab('Gen CSR')).toHaveFocus();
+        press('ArrowRight');
+        expect(tab('Inspector')).toHaveFocus();
         press('End');
-        expect(tab('Lint')).toHaveAttribute('aria-selected', 'true');
+        expect(tab('Gen CSR')).toHaveAttribute('aria-selected', 'true');
+        press('Home');
+        expect(tab('Inspector')).toHaveAttribute('aria-selected', 'true');
     });
 
     it('leaves arrow keys with Alt, Ctrl or Cmd to the browser', () => {
@@ -75,6 +103,8 @@ describe('App tabs', () => {
 
     it('lets Tab reach only the selected tab, so the next Tab goes into its panel', () => {
         render(<App />);
-        expect(screen.getAllByRole('tab').map(t => t.getAttribute('tabindex'))).toEqual(['-1', '-1', '-1', '0', '-1']);
+        const tabs = screen.getAllByRole('tab');
+        expect(tabs.filter(t => t.getAttribute('tabindex') === '0')).toEqual([tab('Inspector')]);
+        expect(tabs.filter(t => t.getAttribute('tabindex') !== '0').map(t => t.getAttribute('tabindex'))).toEqual(['-1', '-1', '-1', '-1']);
     });
 });

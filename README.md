@@ -8,27 +8,7 @@ A powerful and elegant Chrome extension for handling X.509 certificates and cryp
 
 ## Features
 
-### 1. Key Pair Generation
-Generate cryptographic key pairs instantly using the Web Crypto API.
-![Key Pair Generation](screenshots/store/3-keypair.png)
-- **Algorithms**: RSA (2048, 4096 bits), ECDSA (P-256, P-384, P-521), and Ed25519.
-- **Standard Formats**: Private keys are exported in **PKCS#8** and public keys in **SPKI**.
-- **Save As**: Easily download keys with a standard OS save dialog.
-
-### 2. CSR Generation
-Create Certificate Signing Requests (CSR) with a user-friendly form.
-![CSR Generation](screenshots/store/4-csr.png)
-- **Customizable DN**: Set Common Name, Organization, Country, and more.
-- **SAN Support**: Add multiple Subject Alternative Names (DNS, IPv4/IPv6, Email, URI), separated by commas, spaces or new lines. Each one is checked before the CSR is made.
-- **Flexible Signing**: Sign the request with your own RSA, ECDSA (P-256, P-384, P-521) or Ed25519 key, in PKCS#8, PKCS#1 or SEC1 PEM. RSA signs with SHA-256, and ECDSA with the hash that matches its curve.
-
-### 3. Public Key Derivation
-Extract the public key component from various sources.
-![Public Key Derivation](screenshots/store/5-derive.png)
-- **Input Types**: Supports Private Keys (PKCS#8, PKCS#1 or SEC1), Certificates, or CSRs.
-- **Auto-Detection**: Automatically identifies the input type and algorithm.
-
-### 4. Certificate/CSR Inspector
+### 1. Certificate/CSR Inspector
 View detailed information about certificates and signing requests.
 ![Inspector](screenshots/store/2-inspector.png)
 - **Comprehensive View**: Shows Serial Number, Subject, Issuer, Validity, Public Key (RSA, RSA-PSS, ECDSA curves, Ed25519, Ed448, ML-DSA), and Signature Algorithm. Non-ASCII names are decoded correctly.
@@ -40,7 +20,14 @@ View detailed information about certificates and signing requests.
 
 ![This site's certificate](screenshots/store/7-site-cert.png)
 
-### 5. Certificate Linter
+### 2. Inspect Certificates on Web Pages
+Check certificates and CSRs pasted into docs, issues, or CI logs without copying them into the popup.
+![Inspect certificates on web pages](screenshots/store/6-page-inspect.png)
+- **Scan this page**: The button on the Inspector tab marks every certificate and CSR on the current page with a badge showing its name and days left (green, amber under 30 days, red when expired or not yet valid). Hover or click a badge for the full details; a pasted chain gets one badge listing every entry.
+- **Right-click a selection**: Select a PEM block, right-click, and pick *Inspect certificate with Cert Tool*.
+- **Only when you ask**: Cert Tool reads a page only after you click the button or the menu item (the `activeTab` permission), never in the background, and the page text never leaves your browser. Browser pages such as `chrome://` and the Chrome Web Store cannot be scanned.
+
+### 3. Certificate Linter
 Check whether a server certificate is safe to deploy, similar to [zlint](https://github.com/zmap/zlint) but running entirely in the browser.
 ![Certificate Linter](screenshots/store/1-linter.png)
 - **30 checks**: Expiry, hostname coverage, SAN/EKU/Basic Constraints, DNS name syntax, key type and size, weak signatures, duplicate extensions, and the CA/Browser Forum TLS Baseline Requirements (validity limits, permitted algorithms, policy OIDs, revocation info, CT, and more).
@@ -49,12 +36,25 @@ Check whether a server certificate is safe to deploy, similar to [zlint](https:/
 - **Cited sources**: Every finding links back to the BR section, RFC, or root-program policy it comes from.
 - **Out of scope**: Chain building, revocation status lookups, SCT signature verification, CSRs, and CA certificates.
 
-### 6. Inspect Certificates on Web Pages
-Check certificates and CSRs pasted into docs, issues, or CI logs without copying them into the popup.
-![Inspect certificates on web pages](screenshots/store/6-page-inspect.png)
-- **Scan this page**: The button on the Inspector tab marks every certificate and CSR on the current page with a badge showing its name and days left (green, amber under 30 days, red when expired or not yet valid). Hover or click a badge for the full details; a pasted chain gets one badge listing every entry.
-- **Right-click a selection**: Select a PEM block, right-click, and pick *Inspect certificate with Cert Tool*.
-- **Only when you ask**: Cert Tool reads a page only after you click the button or the menu item (the `activeTab` permission), never in the background, and the page text never leaves your browser. Browser pages such as `chrome://` and the Chrome Web Store cannot be scanned.
+### 4. Public Key
+Two tools, on the **Derive** and **Match** sub-tabs.
+![Public Key Derivation](screenshots/store/5-derive.png)
+- **Derive**: Extract the public key from a private key (PKCS#8, PKCS#1 or SEC1), a certificate or a CSR. The input type and algorithm are detected automatically.
+- **Match**: Paste two PEMs to check that they are for the same key pair: a private key and its certificate or CSR, a CSR and the certificate issued from it, or two certificates that share a key. Paste a `fullchain.pem` as is; its first certificate is compared, and the verdict names it and says how many other blocks were left out. The keys are compared by their numbers, not their bytes, so an EC key written compressed still matches. The verdict shows what it rests on: what was compared, and each key's public key pin (`pin-sha256`), the one the Inspector shows, with a Copy button to check it elsewhere.
+
+### 5. Key Pair Generation
+Generate cryptographic key pairs instantly using the Web Crypto API.
+![Key Pair Generation](screenshots/store/3-keypair.png)
+- **Algorithms**: RSA (2048, 4096 bits), ECDSA (P-256, P-384, P-521), and Ed25519.
+- **Standard Formats**: Private keys are exported in **PKCS#8** and public keys in **SPKI**.
+- **Save As**: Easily download keys with a standard OS save dialog.
+
+### 6. CSR Generation
+Create Certificate Signing Requests (CSR) with a user-friendly form.
+![CSR Generation](screenshots/store/4-csr.png)
+- **Customizable DN**: Set Common Name, Organization, Country, and more.
+- **SAN Support**: Add multiple Subject Alternative Names (DNS, IPv4/IPv6, Email, URI), separated by commas, spaces or new lines. Each one is checked before the CSR is made.
+- **Flexible Signing**: Sign the request with your own RSA, ECDSA (P-256, P-384, P-521) or Ed25519 key, in PKCS#8, PKCS#1 or SEC1 PEM. RSA signs with SHA-256, and ECDSA with the hash that matches its curve.
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 

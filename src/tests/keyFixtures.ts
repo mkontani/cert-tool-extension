@@ -199,3 +199,78 @@ export const SAN_CSR_PUBLIC = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEHs/HzruGZpoFTx0to5TTOg91Ljz5
 vw/b59htswn8f3fQAKt1ay7x9JGcfUZDLwOgHL5YFNv5KL8+AxbSZ2a6Ug==
 -----END PUBLIC KEY-----`;
+
+/** A self-signed certificate for EC_PKCS8: `openssl req -x509 -key ec.pkcs8.pem -subj /CN=match.example -not_before 20260101000000Z -not_after 20360101000000Z` */
+export const EC_CERT = `-----BEGIN CERTIFICATE-----
+MIIBZDCCAQqgAwIBAgIUaW+cT2JmhgKLWVDymv3pLHD55FMwCgYIKoZIzj0EAwIw
+GDEWMBQGA1UEAwwNbWF0Y2guZXhhbXBsZTAeFw0yNjAxMDEwMDAwMDBaFw0zNjAx
+MDEwMDAwMDBaMBgxFjAUBgNVBAMMDW1hdGNoLmV4YW1wbGUwWTATBgcqhkjOPQIB
+BggqhkjOPQMBBwNCAAQyG40bhpUwHEpyVzxuuwBdqB7NFc6QtpneFg/MZri7f3ya
+OwrsAxCFn4+F2kJdTWBW07+chlLBOxf3tkV5IyE7ozIwMDAdBgNVHQ4EFgQUIywd
+08sRXeFG8mhXvzIa4sXf3hgwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNI
+ADBFAiAi9Di/i5DYsxx5yPONbvEtbIV0FaJD+JCA8N/zYifKHQIhAJYFsAit/Z8T
+NTIw0ase+wANyIO6paLEly/4BxVQwQon
+-----END CERTIFICATE-----`;
+
+/** A self-signed certificate for RSA_PKCS8, made the same way as EC_CERT. */
+export const RSA_CERT = `-----BEGIN CERTIFICATE-----
+MIIC8DCCAdigAwIBAgIUQSjP8cRLSntuolIt1KXkMNc0I+EwDQYJKoZIhvcNAQEL
+BQAwGDEWMBQGA1UEAwwNbWF0Y2guZXhhbXBsZTAeFw0yNjAxMDEwMDAwMDBaFw0z
+NjAxMDEwMDAwMDBaMBgxFjAUBgNVBAMMDW1hdGNoLmV4YW1wbGUwggEiMA0GCSqG
+SIb3DQEBAQUAA4IBDwAwggEKAoIBAQDOVxkhquSXRX8X9RZ4O+kSNfYwlJGeXmiL
+FbqYG3Lh5hRT0PD8quu+YwzQNqD0Cs2C9xV/wKlMqarz+BqCJAD1mOXg8N+/tfcO
+q2pxA1AH1uanS18f0poaN2HnwADSWYG+6dJn5NWykBufA/RiXQcrY1H37Kc4k5NM
+bFdVcF4fu7QARzco6bP53LjSs5fThHVgCE5x9EAzZkQGDDs1Ewqj/JcGy6oQq1XK
+zjWTsTiHIro34q0HVWZq/P/x28tYKyE5BDiyPTOMF5jEt4PBRc1BgI5HRDtbpjOD
+y0jyk3ZJfcnJLvCfhegyZ+ylD72gxw5GZErfK+MASg3g0oEnpASvAgMBAAGjMjAw
+MB0GA1UdDgQWBBTrI2HeKvm7lrT0cmQOL930QyqSJjAPBgNVHRMBAf8EBTADAQH/
+MA0GCSqGSIb3DQEBCwUAA4IBAQCRAMM/HtNdin+7LbgizwK4ER/6cIoOxGprHNKa
+xnvcR04P4LU4SrVRIOYbxpzoENoEaCGuQUspwQCtAnBiIjm/Fxg34NvTf7RRR09H
+9VBQoCBDczAPB1F7XQjh5edilOvH6fDgb9fF4GTTzaJHkwlOdFl4fgko1nCda5nE
+uDMKgtEmgmCpU+xRo4wYSBVZ6l86f0aODWUVtAZ8lGB5M66sRZ1tCDHLh2Srf1qd
+kKvnMXdCSZFSr7+TRSIdVw48doIEAgfBo7geW9frh8jCsHX6H7Nc/KznZM4d/ycj
+H2S7rNbNjAfYymYDxrqr3kTch90NlnPWs5m1lWJ8z8Ij9mm9
+-----END CERTIFICATE-----`;
+
+/** A CSR signed with EC_PKCS8: `openssl req -new -key ec.pkcs8.pem -subj /CN=match.example` */
+export const EC_CSR = `-----BEGIN CERTIFICATE REQUEST-----
+MIHRMHoCAQAwGDEWMBQGA1UEAwwNbWF0Y2guZXhhbXBsZTBZMBMGByqGSM49AgEG
+CCqGSM49AwEHA0IABDIbjRuGlTAcSnJXPG67AF2oHs0VzpC2md4WD8xmuLt/fJo7
+CuwDEIWfj4XaQl1NYFbTv5yGUsE7F/e2RXkjITugADAKBggqhkjOPQQDAgNHADBE
+AiBdXkFZVLX+u8xHhkBP48LYfYbyGCEnW4dJhzCJ1kpMAgIgXPaQmhYMcBa3xWaz
+SRu07CNHFaDv1F0wG3xGUrOPkRs=
+-----END CERTIFICATE REQUEST-----`;
+
+/** EC_PUBLIC with its point compressed: `openssl pkey -in ec.pkcs8.pem -pubout -ec_conv_form compressed` */
+export const EC_PUBLIC_COMPRESSED = `-----BEGIN PUBLIC KEY-----
+MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADMhuNG4aVMBxKclc8brsAXagezRXO
+kLaZ3hYPzGa4u38=
+-----END PUBLIC KEY-----`;
+
+/** The public key of P384_PKCS8 with its point compressed, whose Y is even: `openssl pkey -in p384.pem -pubout -ec_conv_form compressed` */
+export const P384_PUBLIC_COMPRESSED = `-----BEGIN PUBLIC KEY-----
+MEYwEAYHKoZIzj0CAQYFK4EEACIDMgACiMyeQP7lN63jYQCuRcKnvW++TTRkZiKi
+tqaWoF/OZ3Td7c+5BLulhYF8qF14Psqf
+-----END PUBLIC KEY-----`;
+
+/** The public key of ED25519_PKCS8: `openssl pkey -in ed25519.pem -pubout` */
+export const ED25519_PUBLIC = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEA13jgEVpmZJdw6puEYYqA1ZRZ3UrTbY5tHcQ09f3u6Kc=
+-----END PUBLIC KEY-----`;
+
+/** A CSR signed with EC_PKCS8 whose subject has no common name: `openssl req -new -key ec.pkcs8.pem -subj "/O=Match Example"` */
+export const EC_CSR_WITHOUT_CN = `-----BEGIN CERTIFICATE REQUEST-----
+MIHRMHoCAQAwGDEWMBQGA1UECgwNTWF0Y2ggRXhhbXBsZTBZMBMGByqGSM49AgEG
+CCqGSM49AwEHA0IABDIbjRuGlTAcSnJXPG67AF2oHs0VzpC2md4WD8xmuLt/fJo7
+CuwDEIWfj4XaQl1NYFbTv5yGUsE7F/e2RXkjITugADAKBggqhkjOPQQDAgNHADBE
+AiBKmBvjBSjeuBnYV1wvYOshQ4VqNOulltP6ZuK5N6m90wIgaD9peUlK3cwgm8IC
+oNk2S5TQQUpuLuUYW+jFAu8XZAk=
+-----END CERTIFICATE REQUEST-----`;
+
+/** A CSR signed with EC_PKCS8 with an empty subject: `openssl req -new -key ec.pkcs8.pem -subj /` */
+export const EC_CSR_EMPTY_SUBJECT = `-----BEGIN CERTIFICATE REQUEST-----
+MIG7MGICAQAwADBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABDIbjRuGlTAcSnJX
+PG67AF2oHs0VzpC2md4WD8xmuLt/fJo7CuwDEIWfj4XaQl1NYFbTv5yGUsE7F/e2
+RXkjITugADAKBggqhkjOPQQDAgNJADBGAiEA9TzMLJs1hpLUPT92ARjK6jMg25qd
+bfVnMfKpHwUezOQCIQDitjLLrB9+LTzEwllY9Bs8E0E9g6qa6YZ9ZwDXb0JVcQ==
+-----END CERTIFICATE REQUEST-----`;

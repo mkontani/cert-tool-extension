@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Key, ArrowDownCircle, Loader2 } from 'lucide-react';
+import { KeyRound, ArrowDownCircle, Loader2 } from 'lucide-react';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
 import SaveButton from './SaveButton';
@@ -34,7 +34,7 @@ export default function PubKeyDeriver() {
     return (
         <div className="glass-panel">
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '0.5rem' }}>
-                <Key size={24} color="#8b5cf6" />
+                <KeyRound size={24} color="#8b5cf6" />
                 <h2 style={{ margin: 0 }}>Public Key Derivation</h2>
             </div>
             <div style={{ marginBottom: '1.5rem' }}>
@@ -52,7 +52,6 @@ export default function PubKeyDeriver() {
                 {isProcessing ? <Loader2 className="spin" size={18} style={{ marginRight: '0.5rem', animation: 'spin 1s linear infinite' }} /> : <ArrowDownCircle size={18} style={{ marginRight: '0.5rem' }} />}
                 Extract Public Key
             </button>
-            <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
             {error && <ErrorBanner>{error}</ErrorBanner>}
             {publicKey && (
                 <div data-testid="deriver-results">
