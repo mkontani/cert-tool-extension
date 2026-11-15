@@ -1,5 +1,7 @@
 import * as asn1js from 'asn1js';
 import { describePublicKey } from '../inspector/algorithms';
+import { spkiPinOf } from '../inspector/fingerprint';
+import { commonNameOf, describeName } from '../inspector/format';
 import { toHex } from '../lint/bytes';
 import { OID_EC_PUBLIC_KEY, OID_RSA_ENCRYPTION } from '../lint/checks/common';
 import { readPublicKey, type FoundPublicKey, type KeyHolder } from './publicKey';
@@ -9,17 +11,47 @@ export type { KeyHolder };
 /** One of the two PEMs compared: what holds the key, and the key, e.g. "ECDSA (P-256)". */
 export interface MatchedPem {
     readonly holder: KeyHolder;
+    /** The certificate's or CSR's subject: its common name, or the whole name when it has none. */
+    readonly subject?: string;
     readonly key: string;
+    /**
+     * pin-sha256 (RFC 7469) of the public key as the PEM writes it, or for a private key as `openssl pkey -pubout` writes it:
+     * the Public Key Pin the Inspector shows, and what `openssl dgst -sha256 -binary | base64` gives for the DER.
+     */
+    readonly pin: string;
     /** How many other blocks in the PEM hold a key too, and were not compared. */
     readonly otherBlocks: number;
 }
 
+/**
+ * What the verdict rests on: the RSA modulus and exponent, the EC curve and point,
+ * the key types alone when they differ, or else the two keys as they are encoded.
+ */
+export type MatchBasis = 'rsa' | 'ec' | 'type' | 'encoded';
+
 export interface KeyMatch {
     /** Whether both PEMs hold the same public key, and so belong to the same key pair. */
     readonly same: boolean;
+    readonly basis: MatchBasis;
     readonly first: MatchedPem;
     readonly second: MatchedPem;
 }
+
+/** What makes a public key the key it is, however it is encoded. */
+interface Identity {
+    /** The type of key, which two keys must share to be the same: RSA whichever OID marks it, EC, or else the algorithm OID. */
+    readonly type: string;
+    readonly basis: Exclude<MatchBasis, 'type'>;
+    readonly value: string;
+    /** The Y of an EC point written whole, which must agree with the other key's when that one is written whole too. */
+    readonly y?: string;
+}
+
+/**
+ * Whether two identities are the same key. A compressed EC point gives only Y's parity, which picks the one point on the curve
+ * with that X; two points written whole must agree on all of Y, so that a point off the curve is not taken for another.
+ */
+const sameKey = (a: Identity, b: Identity): boolean => a.value === b.value && (a.y === undefined || b.y === undefined || a.y === b.y);
 
 const OID_RSASSA_PSS = '1.2.840.113549.1.1.10';
 
@@ -58,15 +90,18 @@ function rsaIdentity(key: Uint8Array): string | undefined {
 }
 
 /**
- * An EC point as X and the parity of Y, so that its compressed (02 or 03, then X), uncompressed (04, X, Y)
- * and X9.62 hybrid (06 or 07, X, Y) forms compare equal.
+ * An EC point as X and the parity of Y, with Y itself when the point is written whole, so that its compressed (02 or 03, then X),
+ * uncompressed (04, X, Y) and X9.62 hybrid (06 or 07, X, Y) forms compare equal. A hybrid point whose first byte gives the other
+ * parity than its Y contradicts itself, and is compared as encoded.
  */
-function ecIdentity(curve: string, point: Uint8Array): string | undefined {
+function ecIdentity(curve: string, point: Uint8Array): Pick<Identity, 'value' | 'y'> | undefined {
     const [form] = point;
-    if ((form === 0x02 || form === 0x03) && point.length > 1) return `EC:${curve}:${toHex(point.subarray(1))}:${form & 1}`;
+    if ((form === 0x02 || form === 0x03) && point.length > 1) return { value: `EC:${curve}:${toHex(point.subarray(1))}:${form & 1}` };
     if ((form === 0x04 || form === 0x06 || form === 0x07) && point.length > 1 && point.length % 2 === 1) {
         const size = (point.length - 1) / 2;
-        return `EC:${curve}:${toHex(point.subarray(1, 1 + size))}:${point[point.length - 1] & 1}`;
+        const parity = point[point.length - 1] & 1;
+        if (form !== 0x04 && (form & 1) !== parity) return undefined;
+        return { value: `EC:${curve}:${toHex(point.subarray(1, 1 + size))}:${parity}`, y: toHex(point.subarray(1 + size)) };
     }
     return undefined;
 }
@@ -75,24 +110,31 @@ function ecIdentity(curve: string, point: Uint8Array): string | undefined {
  * What makes two SubjectPublicKeyInfos the same key, however each one encodes it.
  * readPublicKey has checked the SPKI's shape, so the DER fallback is only a guard.
  */
-function keyIdentity(spki: Uint8Array): string {
+function keyIdentity(spki: Uint8Array): Identity {
     const parsed = asn1js.fromBER(spki);
     const [algorithm, key] = parsed.result instanceof asn1js.Sequence ? parsed.result.valueBlock.value : [];
     const [algorithmOid, parameters] = algorithm instanceof asn1js.Sequence ? algorithm.valueBlock.value : [];
     const oid = oidOf(algorithmOid);
-    if (oid === undefined || !(key instanceof asn1js.BitString)) return `DER:${toHex(spki)}`;
+    if (oid === undefined || !(key instanceof asn1js.BitString)) return { type: 'DER', basis: 'encoded', value: `DER:${toHex(spki)}` };
     const keyBytes = bytesOf(key);
-    if (oid === OID_RSA_ENCRYPTION || oid === OID_RSASSA_PSS) {
-        const identity = rsaIdentity(keyBytes);
-        if (identity) return identity;
-    }
-    const curve = oidOf(parameters);
-    if (oid === OID_EC_PUBLIC_KEY && curve !== undefined && PRIME_CURVES.has(curve)) {
-        const identity = ecIdentity(curve, keyBytes);
-        if (identity) return identity;
-    }
     const parametersHex = parameters ? toHex(new Uint8Array(parameters.valueBeforeDecodeView)) : '';
-    return `${oid}:${parametersHex}:${toHex(keyBytes)}`;
+    const asEncoded = (type: string): Identity => ({ type, basis: 'encoded', value: `${oid}:${parametersHex}:${toHex(keyBytes)}` });
+    if (oid === OID_RSA_ENCRYPTION || oid === OID_RSASSA_PSS) {
+        const value = rsaIdentity(keyBytes);
+        return value ? { type: 'RSA', basis: 'rsa', value } : asEncoded('RSA');
+    }
+    if (oid === OID_EC_PUBLIC_KEY) {
+        const curve = oidOf(parameters);
+        const point = curve !== undefined && PRIME_CURVES.has(curve) ? ecIdentity(curve, keyBytes) : undefined;
+        return point ? { type: 'EC', basis: 'ec', ...point } : asEncoded('EC');
+    }
+    return asEncoded(oid);
+}
+
+/** Keys of different types are told apart by that alone; keys of one type, by what both identities rest on. */
+function basisOf(first: Identity, second: Identity): MatchBasis {
+    if (first.type !== second.type) return 'type';
+    return first.basis === second.basis ? first.basis : 'encoded';
 }
 
 /** Reads one of the PEMs, naming it in the message of any error. */
@@ -104,7 +146,13 @@ async function readPem(name: string, text: string): Promise<FoundPublicKey> {
     }
 }
 
-const matched = ({ holder, spki, otherBlocks }: FoundPublicKey): MatchedPem => ({ holder, key: describePublicKey(spki), otherBlocks });
+/** A subject by its common name, as the Inspector labels a certificate, or else by the whole name; an empty one names nothing. */
+const subjectName = (subject: Uint8Array): string => commonNameOf(subject) || describeName(subject);
+
+function matched({ holder, spki, subject, otherBlocks }: FoundPublicKey): MatchedPem {
+    const name = subject ? subjectName(subject) : '';
+    return { holder, ...(name ? { subject: name } : {}), key: describePublicKey(spki), pin: spkiPinOf(spki), otherBlocks };
+}
 
 /**
  * Checks whether two PEMs hold the same public key: a private key and the certificate or CSR made for it,
@@ -114,7 +162,8 @@ const matched = ({ holder, spki, otherBlocks }: FoundPublicKey): MatchedPem => (
 export async function matchKeys(first: string, second: string): Promise<KeyMatch> {
     const a = await readPem('First PEM', first);
     const b = await readPem('Second PEM', second);
-    return { same: keyIdentity(a.spki) === keyIdentity(b.spki), first: matched(a), second: matched(b) };
+    const [x, y] = [keyIdentity(a.spki), keyIdentity(b.spki)];
+    return { same: sameKey(x, y), basis: basisOf(x, y), first: matched(a), second: matched(b) };
 }
 
 const plural = (holder: KeyHolder): string => (holder === 'CSR' ? 'CSRs' : `${holder}s`);
@@ -126,8 +175,25 @@ export function describeMatch({ same, first, second }: KeyMatch): string {
     return `The ${first.holder} and the ${second.holder} are for ${pairs}.`;
 }
 
-/** What one PEM held, e.g. "certificate, RSA (2048 bits); 2 other blocks in it were not compared". */
-export function describePem({ holder, key, otherBlocks }: MatchedPem): string {
-    if (otherBlocks === 0) return `${holder}, ${key}`;
-    return `${holder}, ${key}; ${otherBlocks} other block${otherBlocks === 1 ? ' in it was' : 's in it were'} not compared`;
+const BASES: Readonly<Record<MatchBasis, string>> = {
+    rsa: 'Compared the RSA modulus and public exponent of each key.',
+    ec: 'Compared the curve and the point of each key.',
+    type: 'The keys are of different types.',
+    encoded: 'Compared the two public keys byte for byte.',
+};
+
+/**
+ * What the verdict rests on, in a sentence or two. The same key can be written two ways, e.g. with its EC point compressed or
+ * marked for RSASSA-PSS, and then the pins shown beside it differ, so that is explained rather than left to look like a contradiction.
+ */
+export function describeBasis({ same, basis, first, second }: KeyMatch): string {
+    const encodedApart = same && first.pin !== second.pin;
+    return encodedApart ? `${BASES[basis]} The pins differ only because the two PEMs write the same key differently.` : BASES[basis];
+}
+
+/** What one PEM held, e.g. "certificate for www.example.com, RSA (2048 bits); 2 other blocks in it were not compared". */
+export function describePem({ holder, subject, key, otherBlocks }: MatchedPem): string {
+    const held = `${holder}${subject ? ` for ${subject}` : ''}, ${key}`;
+    if (otherBlocks === 0) return held;
+    return `${held}; ${otherBlocks} other block${otherBlocks === 1 ? ' in it was' : 's in it were'} not compared`;
 }

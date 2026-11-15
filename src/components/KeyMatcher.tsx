@@ -1,24 +1,52 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { CircleCheck, CircleX, GitCompareArrows, Loader2 } from 'lucide-react';
+import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
-import { describeMatch, describePem, matchKeys, type KeyMatch } from '../keys/keyMatch';
+import { describeBasis, describeMatch, describePem, matchKeys, type KeyMatch, type MatchedPem } from '../keys/keyMatch';
 
 const PEM_STYLE = { fontFamily: 'monospace', fontSize: '0.8rem' } as const;
 
+const PIN_NOTE = 'A public key pin (pin-sha256, RFC 7469) is the base64 SHA-256 of the public key; the Inspector shows the same pin for a certificate or CSR.';
+
+const headline = (match: KeyMatch): string => (match.same ? 'Match' : 'No match');
+
+interface PemSideProps {
+    readonly ordinal: 'first' | 'second';
+    readonly pem: MatchedPem;
+}
+
+/** What one PEM held, and the pin of its key, which can be copied to check it elsewhere. */
+function PemSide({ ordinal, pem }: PemSideProps) {
+    const name = ordinal === 'first' ? 'First PEM' : 'Second PEM';
+    return (
+        <li>
+            <span>{name}: {describePem(pem)}</span>
+            <div className="hash-value match-pin">
+                <span className="match-pin-label">Public Key Pin:</span>
+                <code>{pem.pin}</code>
+                <CopyButton text={pem.pin} label={`public key pin of the ${ordinal} PEM`} />
+            </div>
+        </li>
+    );
+}
+
+/** The verdict with what it rests on: what was compared, and each PEM's key and its pin. */
 function Verdict({ match }: { readonly match: KeyMatch }) {
     const Icon = match.same ? CircleCheck : CircleX;
     return (
-        <div className="match-verdict" data-same={match.same}>
+        <section className="match-verdict" data-same={match.same} aria-label="Match result">
             <Icon size={20} aria-hidden className="match-verdict-icon" />
-            <div>
-                <strong>{match.same ? 'Match' : 'No match'}</strong>
+            <div className="match-verdict-body">
+                <strong>{headline(match)}</strong>
                 <p>{describeMatch(match)}</p>
+                <p className="match-basis">{describeBasis(match)}</p>
                 <ul>
-                    <li>First PEM: {describePem(match.first)}</li>
-                    <li>Second PEM: {describePem(match.second)}</li>
+                    <PemSide ordinal="first" pem={match.first} />
+                    <PemSide ordinal="second" pem={match.second} />
                 </ul>
+                <p className="match-pin-note">{PIN_NOTE}</p>
             </div>
-        </div>
+        </section>
     );
 }
 
@@ -102,7 +130,11 @@ export default function KeyMatcher({ compare = matchKeys }: KeyMatcherProps) {
                 Check Match
             </button>
             {error && <ErrorBanner>{error}</ErrorBanner>}
-            <div role="status">{match && <Verdict match={match} />}</div>
+            {/* Only the verdict is announced: read out, the pins would be noise, and their copy buttons announce for themselves. */}
+            <div role="status" className="visually-hidden" data-testid="match-announcement">
+                {match && `${headline(match)}: ${describeMatch(match)}`}
+            </div>
+            {match && <Verdict match={match} />}
         </div>
     );
 }

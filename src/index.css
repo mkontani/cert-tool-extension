@@ -399,8 +399,6 @@ h1, h2, h3 {
   100% { transform: rotate(360deg); }
 }
 
-
-
 /* The Key Match verdict: green when the two PEMs are for the same key pair, red when not. */
 .match-verdict {
   --tone: #86efac;
@@ -430,12 +428,46 @@ h1, h2, h3 {
   margin: 0.2rem 0 0.4rem;
 }
 
+/* The verdict's text beside its icon; min-width lets a pin wrap instead of widening the box. */
+.match-verdict-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* What the verdict rests on. */
+.match-verdict .match-basis {
+  margin-top: 0;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
 .match-verdict ul {
   margin: 0;
   padding: 0;
   list-style: none;
   color: #94a3b8;
   font-size: 0.8rem;
+}
+
+.match-verdict li + li {
+  margin-top: 0.5rem;
+}
+
+/* A side's public key pin, laid out as the Inspector lays out its hashes (.hash-value). */
+.match-pin {
+  margin-top: 0.2rem;
+}
+
+.match-pin-label {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* What a pin is, under the two of them. */
+.match-verdict .match-pin-note {
+  margin: 0.6rem 0 0;
+  color: #94a3b8;
+  font-size: 0.75rem;
 }
 
 /* An error in a tool's panel (ErrorBanner). */

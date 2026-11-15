@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
 import * as asn1js from 'asn1js';
-import { describeMatch, describePem, matchKeys, type KeyHolder } from '../../keys/keyMatch';
-import { CA_CERT, ED25519_LEAF } from '../lint/fixtures';
+import { describeBasis, describeMatch, describePem, matchKeys, type KeyHolder, type KeyMatch, type MatchBasis } from '../../keys/keyMatch';
+import { inspect } from '../../inspector/inspect';
+import { CA_CERT, ED25519_LEAF, PUBLIC_RSA_LEAF } from '../lint/fixtures';
 import { SAN_CSR } from '../inspectorFixtures';
 import {
     EC_CERT,
     EC_CSR,
+    EC_CSR_EMPTY_SUBJECT,
+    EC_CSR_WITHOUT_CN,
     EC_PKCS8,
     EC_PUBLIC,
     EC_PUBLIC_COMPRESSED,
@@ -25,11 +29,14 @@ import {
 const NOT_FOUND = 'Paste a private key, certificate, CSR or public key in PEM, from its -----BEGIN line to its -----END line.';
 
 const derOf = (pem: string) => new Uint8Array(Buffer.from(pem.replace(/-----[^-]+-----|\s/g, ''), 'base64'));
+/** pin-sha256 (RFC 7469) of a PUBLIC KEY block, as `openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | base64` gives it. */
+const pinOf = (pem: string) => createHash('sha256').update(derOf(pem)).digest('base64');
 const pemOf = (label: string, bytes: Uint8Array) => `-----BEGIN ${label}-----\n${Buffer.from(bytes).toString('base64')}\n-----END ${label}-----`;
 
 const OID_RSA = '1.2.840.113549.1.1.1';
 const OID_EC = '1.2.840.10045.2.1';
 const OID_SECP256K1 = '1.3.132.0.10';
+const OID_SECT233K1 = '1.3.132.0.26';
 
 /** The AlgorithmIdentifier values and the key bytes of a PUBLIC KEY block. */
 function partsOf(pem: string): { algorithm: asn1js.AsnType[]; key: Uint8Array } {
@@ -76,9 +83,27 @@ function hybridPoint(): string {
     return spkiPem(algorithm, key.map((byte, i) => (i === 0 ? 0x07 : byte)));
 }
 
+/** EC_PUBLIC with the given first byte, and its Y changed by the given function. */
+function ecPointVariant(form: number, changeY: (y: Uint8Array) => Uint8Array = y => y): string {
+    const { algorithm, key } = partsOf(EC_PUBLIC);
+    const size = (key.length - 1) / 2;
+    return spkiPem(algorithm, new Uint8Array([form, ...key.subarray(1, 1 + size), ...changeY(key.subarray(1 + size))]));
+}
+
+/** EC_PUBLIC with another Y of the same parity: no point on the curve, but one a parity check alone would take for EC_PUBLIC. */
+const EC_PUBLIC_OTHER_Y_SAME_PARITY = ecPointVariant(0x04, y => y.map((byte, i) => (i === 0 ? byte ^ 0x80 : byte)));
+/** EC_PUBLIC as a hybrid point whose first byte says Y is even, though it is odd. */
+const EC_PUBLIC_HYBRID_WRONG_PARITY = ecPointVariant(0x06);
+
 /** EC_PUBLIC's point bytes, as if on secp256k1: a field of the same size, but another curve. */
 const EC_PUBLIC_ON_SECP256K1 = spkiPem(
     [new asn1js.ObjectIdentifier({ value: OID_EC }), new asn1js.ObjectIdentifier({ value: OID_SECP256K1 })],
+    partsOf(EC_PUBLIC).key,
+);
+
+/** EC_PUBLIC's point bytes, as if on sect233k1: a binary curve, whose points are compared as encoded. */
+const EC_PUBLIC_ON_SECT233K1 = spkiPem(
+    [new asn1js.ObjectIdentifier({ value: OID_EC }), new asn1js.ObjectIdentifier({ value: OID_SECT233K1 })],
     partsOf(EC_PUBLIC).key,
 );
 
@@ -113,6 +138,8 @@ describe('matchKeys', () => {
         ['EC points with the same X but the other Y', otherCompressedPoint(), EC_PUBLIC],
         ['the same point bytes on another curve of the same size', EC_PUBLIC_ON_SECP256K1, EC_PUBLIC],
         ['RSA keys with the same modulus but another exponent', RSA_PUBLIC_OTHER_EXPONENT, RSA_PUBLIC],
+        ['whole EC points with the same X and Y parity but another Y', EC_PUBLIC_OTHER_Y_SAME_PARITY, EC_PUBLIC],
+        ['a whole EC point and a hybrid one that contradicts itself', EC_PUBLIC_HYBRID_WRONG_PARITY, EC_PUBLIC],
     ])('tells apart %s, whichever comes first', async (_, first, second) => {
         expect((await matchKeys(first, second)).same).toBe(false);
         expect((await matchKeys(second, first)).same).toBe(false);
@@ -121,14 +148,55 @@ describe('matchKeys', () => {
     it('says what each PEM is and which key it holds', async () => {
         expect(await matchKeys(EC_PKCS8, RSA_CERT)).toEqual({
             same: false,
-            first: { holder: 'private key', key: 'ECDSA (P-256)', otherBlocks: 0 },
-            second: { holder: 'certificate', key: 'RSA (2048 bits)', otherBlocks: 0 },
+            basis: 'type',
+            first: { holder: 'private key', key: 'ECDSA (P-256)', pin: pinOf(EC_PUBLIC), otherBlocks: 0 },
+            second: { holder: 'certificate', subject: 'match.example', key: 'RSA (2048 bits)', pin: pinOf(RSA_PUBLIC), otherBlocks: 0 },
         });
         expect(await matchKeys(EC_CSR, RSA_PUBLIC_PKCS1)).toEqual({
             same: false,
-            first: { holder: 'CSR', key: 'ECDSA (P-256)', otherBlocks: 0 },
-            second: { holder: 'public key', key: 'RSA (2048 bits)', otherBlocks: 0 },
+            basis: 'type',
+            first: { holder: 'CSR', subject: 'match.example', key: 'ECDSA (P-256)', pin: pinOf(EC_PUBLIC), otherBlocks: 0 },
+            second: { holder: 'public key', key: 'RSA (2048 bits)', pin: pinOf(RSA_PUBLIC), otherBlocks: 0 },
         });
+    });
+
+    it('gives the pin the Inspector shows for the certificate', async () => {
+        const { second } = await matchKeys(EC_PKCS8, EC_CERT);
+        expect(second.pin).toBe(inspect(derOf(EC_CERT), 'certificate').spkiSha256);
+    });
+
+    it('names the certificate it compared out of a full chain: the first one', async () => {
+        const { first } = await matchKeys(`${PUBLIC_RSA_LEAF}\n${CA_CERT}`, RSA_PUBLIC);
+        expect(first).toMatchObject({ holder: 'certificate', subject: 'www.example.com', otherBlocks: 1 });
+    });
+
+    it.each([
+        ['by the whole name when it has no common name', EC_CSR_WITHOUT_CN, { subject: 'organizationName=Match Example' }],
+        ['by nothing when it is empty', EC_CSR_EMPTY_SUBJECT, {}],
+    ])('names a CSR %s', async (_, csr, named) => {
+        const { first } = await matchKeys(csr, EC_PKCS8);
+        expect(first).toEqual({ holder: 'CSR', ...named, key: 'ECDSA (P-256)', pin: pinOf(EC_PUBLIC), otherBlocks: 0 });
+    });
+
+    it('gives each side the pin of the key as that PEM encodes it, so the same key encoded another way has another pin', async () => {
+        const { same, first, second } = await matchKeys(EC_PUBLIC_COMPRESSED, EC_CERT);
+        expect(same).toBe(true);
+        expect([first.pin, second.pin]).toEqual([pinOf(EC_PUBLIC_COMPRESSED), pinOf(EC_PUBLIC)]);
+    });
+
+    it.each<[string, string, string, MatchBasis]>([
+        ['RSA keys by their modulus and exponent', RSA_PKCS8, RSA_CERT, 'rsa'],
+        ['RSA keys that differ the same way', RSA_PKCS8, CA_CERT, 'rsa'],
+        ['an RSA key marked for RSASSA-PSS with one that is not', RSA_PUBLIC_FOR_PSS, RSA_PUBLIC, 'rsa'],
+        ['EC keys by their curve and point', EC_PUBLIC_COMPRESSED, EC_CERT, 'ec'],
+        ['EC keys on different curves the same way', P384_PKCS8, EC_CERT, 'ec'],
+        ['keys of different types by their types alone', EC_PKCS8, RSA_CERT, 'type'],
+        ['Ed25519 and ECDSA keys as keys of different types', ED25519_PUBLIC, EC_PUBLIC, 'type'],
+        ['Ed25519 keys as they are encoded', ED25519_PKCS8, ED25519_PUBLIC, 'encoded'],
+        ['an EC key on a binary curve with one on a prime curve as they are encoded', EC_PUBLIC_ON_SECT233K1, EC_PUBLIC, 'encoded'],
+    ])('compares %s', async (_, first, second, basis) => {
+        expect((await matchKeys(first, second)).basis).toBe(basis);
+        expect((await matchKeys(second, first)).basis).toBe(basis);
     });
 
     it.each([
@@ -152,17 +220,23 @@ describe('matchKeys', () => {
 });
 
 describe('describePem', () => {
+    const PIN = pinOf(EC_PUBLIC);
+
     it.each([
-        [0, 'certificate, ECDSA (P-256)'],
-        [1, 'certificate, ECDSA (P-256); 1 other block in it was not compared'],
-        [2, 'certificate, ECDSA (P-256); 2 other blocks in it were not compared'],
+        [0, 'certificate for match.example, ECDSA (P-256)'],
+        [1, 'certificate for match.example, ECDSA (P-256); 1 other block in it was not compared'],
+        [2, 'certificate for match.example, ECDSA (P-256); 2 other blocks in it were not compared'],
     ])('says what a PEM with %i other blocks held', (otherBlocks, text) => {
-        expect(describePem({ holder: 'certificate', key: 'ECDSA (P-256)', otherBlocks })).toBe(text);
+        expect(describePem({ holder: 'certificate', subject: 'match.example', key: 'ECDSA (P-256)', pin: PIN, otherBlocks })).toBe(text);
+    });
+
+    it('names no subject for a key', () => {
+        expect(describePem({ holder: 'private key', key: 'ECDSA (P-256)', pin: PIN, otherBlocks: 0 })).toBe('private key, ECDSA (P-256)');
     });
 });
 
 describe('describeMatch', () => {
-    const side = (holder: KeyHolder) => ({ holder, key: 'ECDSA (P-256)', otherBlocks: 0 });
+    const side = (holder: KeyHolder) => ({ holder, key: 'ECDSA (P-256)', pin: 'pin', otherBlocks: 0 });
 
     it.each<[boolean, KeyHolder, KeyHolder, string]>([
         [true, 'private key', 'certificate', 'The private key and the certificate are for the same key pair.'],
@@ -172,6 +246,30 @@ describe('describeMatch', () => {
         [false, 'CSR', 'CSR', 'The two CSRs are for different key pairs.'],
         [false, 'public key', 'public key', 'The two public keys are for different key pairs.'],
     ])('words a match of %s between a %s and a %s', (same, first, second, sentence) => {
-        expect(describeMatch({ same, first: side(first), second: side(second) })).toBe(sentence);
+        expect(describeMatch({ same, basis: 'ec', first: side(first), second: side(second) })).toBe(sentence);
+    });
+});
+
+describe('describeBasis', () => {
+    const side = (pin: string) => ({ holder: 'public key' as const, key: 'ECDSA (P-256)', pin, otherBlocks: 0 });
+    const match = (same: boolean, basis: MatchBasis, pins: [string, string] = ['a', 'a']): KeyMatch =>
+        ({ same, basis, first: side(pins[0]), second: side(pins[1]) });
+
+    it.each<[MatchBasis, string]>([
+        ['rsa', 'Compared the RSA modulus and public exponent of each key.'],
+        ['ec', 'Compared the curve and the point of each key.'],
+        ['type', 'The keys are of different types.'],
+        ['encoded', 'Compared the two public keys byte for byte.'],
+    ])('says what a comparison by %s looked at', (basis, sentence) => {
+        expect(describeBasis(match(basis !== 'type', basis))).toBe(sentence);
+    });
+
+    it('explains why the pins of the same key differ', () => {
+        expect(describeBasis(match(true, 'ec', ['a', 'b'])))
+            .toBe('Compared the curve and the point of each key. The pins differ only because the two PEMs write the same key differently.');
+    });
+
+    it('leaves the differing pins of different keys to speak for themselves', () => {
+        expect(describeBasis(match(false, 'rsa', ['a', 'b']))).toBe('Compared the RSA modulus and public exponent of each key.');
     });
 });
