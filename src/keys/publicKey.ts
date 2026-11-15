@@ -3,6 +3,20 @@ import { OID_RSA_ENCRYPTION } from '../lint/checks/common';
 import { decodeBase64, pemBlocks, toPem } from './pem';
 import { describeKey, publicKeyOf, readPrivateKey } from './privateKey';
 
+/** What holds a public key in pasted PEM. */
+export type KeyHolder = 'private key' | 'certificate' | 'CSR' | 'public key';
+
+/** A public key found in pasted PEM. */
+export interface FoundPublicKey {
+    /** The SubjectPublicKeyInfo as DER. */
+    readonly spki: Uint8Array;
+    /** What it was taken from, e.g. "Certificate" or "Private Key (ECDSA P-256)". */
+    readonly source: string;
+    readonly holder: KeyHolder;
+    /** How many other blocks in the text hold a key too, such as the intermediates of a full chain; they are not read. */
+    readonly otherBlocks: number;
+}
+
 /** A public key taken from pasted PEM. */
 export interface DerivedPublicKey {
     /** The SubjectPublicKeyInfo as a PUBLIC KEY block, as `openssl pkey -pubout` writes it. */
@@ -71,13 +85,14 @@ function fromPkcs1(der: Der): Uint8Array | undefined {
 
 interface Reader {
     readonly source: string;
+    readonly holder: KeyHolder;
     /** What the block should hold, for the message when it holds something else. */
     readonly holds: string;
     readonly read: (der: Der) => Uint8Array | undefined;
 }
 
-const CERTIFICATE: Reader = { source: 'Certificate', holds: 'certificate', read: fromCertificate };
-const CSR: Reader = { source: 'CSR', holds: 'CSR', read: fromCsr };
+const CERTIFICATE: Reader = { source: 'Certificate', holder: 'certificate', holds: 'certificate', read: fromCertificate };
+const CSR: Reader = { source: 'CSR', holder: 'CSR', holds: 'CSR', read: fromCsr };
 
 /** The blocks a public key can be taken from, by their label; the legacy labels are the ones the Inspector reads too. */
 const READERS: ReadonlyMap<string, Reader> = new Map([
@@ -85,21 +100,24 @@ const READERS: ReadonlyMap<string, Reader> = new Map([
     ['X509 CERTIFICATE', CERTIFICATE],
     ['CERTIFICATE REQUEST', CSR],
     ['NEW CERTIFICATE REQUEST', CSR],
-    ['PUBLIC KEY', { source: 'Public Key', holds: 'public key', read: fromSpki }],
-    ['RSA PUBLIC KEY', { source: 'RSA Public Key (PKCS#1)', holds: 'PKCS#1 public key', read: fromPkcs1 }],
+    ['PUBLIC KEY', { source: 'Public Key', holder: 'public key', holds: 'public key', read: fromSpki }],
+    ['RSA PUBLIC KEY', { source: 'RSA Public Key (PKCS#1)', holder: 'public key', holds: 'PKCS#1 public key', read: fromPkcs1 }],
 ]);
 
+const isPrivateKey = (label: string): boolean => label.endsWith('PRIVATE KEY');
+
 /**
- * Takes the public key from pasted PEM: from a private key wherever it is in the text,
- * or else from the first certificate, CSR or public key. A block that is there but broken is reported rather than skipped.
+ * Finds the public key in pasted PEM: in a private key wherever it is in the text,
+ * or else in the first certificate, CSR or public key. A block that is there but broken is reported rather than skipped.
  * Throws an Error whose message can be shown as is.
  */
-export async function derivePublicKey(text: string): Promise<DerivedPublicKey> {
+export async function readPublicKey(text: string): Promise<FoundPublicKey> {
     const blocks = pemBlocks(text);
-    if (blocks.some(block => block.label.endsWith('PRIVATE KEY'))) {
+    const otherBlocks = blocks.filter(block => isPrivateKey(block.label) || READERS.has(block.label)).length - 1;
+    if (blocks.some(block => isPrivateKey(block.label))) {
         // PKCS#8, PKCS#1 or SEC1; the key block is found even when a certificate comes first.
         const key = readPrivateKey(text);
-        return { pem: toPem('PUBLIC KEY', await publicKeyOf(key)), source: `Private Key (${describeKey(key.algorithm)})` };
+        return { spki: await publicKeyOf(key), source: `Private Key (${describeKey(key.algorithm)})`, holder: 'private key', otherBlocks };
     }
     for (const { label, content } of blocks) {
         const reader = READERS.get(label);
@@ -108,7 +126,13 @@ export async function derivePublicKey(text: string): Promise<DerivedPublicKey> {
         if (!der) throw new Error(`The ${label} block is not valid base64.`);
         const spki = reader.read(der);
         if (!spki) throw new Error(`The ${label} block is not a valid ${reader.holds}.`);
-        return { pem: toPem('PUBLIC KEY', spki), source: reader.source };
+        return { spki, source: reader.source, holder: reader.holder, otherBlocks };
     }
     throw new Error(NOT_FOUND);
+}
+
+/** The public key in pasted PEM as a PUBLIC KEY block; see readPublicKey for where it is taken from. */
+export async function derivePublicKey(text: string): Promise<DerivedPublicKey> {
+    const { spki, source } = await readPublicKey(text);
+    return { pem: toPem('PUBLIC KEY', spki), source };
 }

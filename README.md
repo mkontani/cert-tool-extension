@@ -22,11 +22,11 @@ Create Certificate Signing Requests (CSR) with a user-friendly form.
 - **SAN Support**: Add multiple Subject Alternative Names (DNS, IPv4/IPv6, Email, URI), separated by commas, spaces or new lines. Each one is checked before the CSR is made.
 - **Flexible Signing**: Sign the request with your own RSA, ECDSA (P-256, P-384, P-521) or Ed25519 key, in PKCS#8, PKCS#1 or SEC1 PEM. RSA signs with SHA-256, and ECDSA with the hash that matches its curve.
 
-### 3. Public Key Derivation
-Extract the public key component from various sources.
+### 3. Public Key
+Two tools, on the **Derive** and **Match** sub-tabs.
 ![Public Key Derivation](screenshots/store/5-derive.png)
-- **Input Types**: Supports Private Keys (PKCS#8, PKCS#1 or SEC1), Certificates, or CSRs.
-- **Auto-Detection**: Automatically identifies the input type and algorithm.
+- **Derive**: Extract the public key from a private key (PKCS#8, PKCS#1 or SEC1), a certificate or a CSR. The input type and algorithm are detected automatically.
+- **Match**: Paste two PEMs to check that they are for the same key pair: a private key and its certificate or CSR, a CSR and the certificate issued from it, or two certificates that share a key. Paste a `fullchain.pem` as is; its first certificate is compared, and the verdict says how many other blocks were left out. The keys are compared by their numbers, not their bytes, so an EC key written compressed still matches.
 
 ### 4. Certificate/CSR Inspector
 View detailed information about certificates and signing requests.

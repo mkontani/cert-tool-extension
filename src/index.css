@@ -135,6 +135,40 @@ h1, h2, h3 {
   color: white;
 }
 
+/* A choice between the tools inside one tab, e.g. Derive and Match in Public Key: a segmented control above the panel. */
+.subtabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.25rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.subtab {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subtab.active {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--primary-color);
+}
+
+.subtab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
 /* The Inspector's buttons that work on the current tab, side by side. Empty outside the extension (e.g. the GitHub Pages demo). */
 .page-tools {
   display: grid;
@@ -358,6 +392,50 @@ h1, h2, h3 {
   border-radius: 6px;
   color: #94a3b8;
   font-size: 0.72rem;
+}
+
+/* The busy icon on a tool's main button while it works. */
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+
+
+/* The Key Match verdict: green when the two PEMs are for the same key pair, red when not. */
+.match-verdict {
+  --tone: #86efac;
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+}
+
+.match-verdict[data-same="false"] {
+  --tone: #fca5a5;
+}
+
+.match-verdict-icon {
+  flex: none;
+  margin-top: 0.1rem;
+  color: var(--tone);
+}
+
+.match-verdict strong {
+  color: var(--tone);
+}
+
+.match-verdict p {
+  margin: 0.2rem 0 0.4rem;
+}
+
+.match-verdict ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #94a3b8;
+  font-size: 0.8rem;
 }
 
 /* An error in a tool's panel (ErrorBanner). */

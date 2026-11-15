@@ -52,7 +52,6 @@ export default function PubKeyDeriver() {
                 {isProcessing ? <Loader2 className="spin" size={18} style={{ marginRight: '0.5rem', animation: 'spin 1s linear infinite' }} /> : <ArrowDownCircle size={18} style={{ marginRight: '0.5rem' }} />}
                 Extract Public Key
             </button>
-            <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
             {error && <ErrorBanner>{error}</ErrorBanner>}
             {publicKey && (
                 <div data-testid="deriver-results">

@@ -169,10 +169,6 @@ export default function KeyPairGenerator() {
                 )}
             </button>
 
-            <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-      `}</style>
-
             {error && <ErrorBanner>{error}</ErrorBanner>}
 
             {privateKey && (

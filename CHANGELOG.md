@@ -4,6 +4,12 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+### Added
+- Public Key: the Match sub-tab says whether two PEMs are for the same key pair. Each one can be a private key, certificate, CSR or public key, so it checks that a certificate was issued for a private key, that a CSR was made with it, or that a renewed certificate kept its key. A `fullchain.pem` is compared by its first certificate, and the verdict says how many other blocks were left out. The keys are compared by their numbers rather than their bytes, so an EC key with a compressed point, or an RSA key marked for RSASSA-PSS, still matches.
+
+### Changed
+- The Derive PubKey tab is now called Public Key. It holds two sub-tabs: Derive, which takes the public key out of a PEM as before, and Match. Like the tool tabs, the sub-tabs keep what was typed in each, and the arrow keys move between them.
+
 ## [1.4.0] - 2026-11-15
 
 ### Added

@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import App from '../App';
 
 const tab = (name: string) => screen.getByRole('tab', { name });
-const TAB_NAMES = ['Gen KeyPair', 'Gen CSR', 'Derive PubKey', 'Inspector', 'Lint'];
+const TAB_NAMES = ['Gen KeyPair', 'Gen CSR', 'Public Key', 'Inspector', 'Lint'];
 
 describe('App tabs', () => {
     it('lists the tools as tabs and opens on the Inspector', () => {
@@ -24,6 +24,16 @@ describe('App tabs', () => {
         expect(screen.getByRole('tabpanel', { name: 'Lint' })).toHaveAttribute('aria-labelledby', tab('Lint').id);
         expect(screen.getByRole('heading', { name: 'Certificate Linter' })).toBeVisible();
         expect(screen.queryByRole('heading', { name: 'Certificate Inspector' })).toBeNull();
+    });
+
+    it('leaves the arrow keys of the Public Key sub-tabs to them, without changing the tool', () => {
+        render(<App />);
+        fireEvent.click(tab('Public Key'));
+        tab('Derive').focus();
+        fireEvent.keyDown(tab('Derive'), { key: 'ArrowRight' });
+        expect(tab('Match')).toHaveFocus();
+        expect(tab('Public Key')).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('heading', { name: 'Key Match' })).toBeVisible();
     });
 
     it('keeps what was typed in a tab while another tab is open', () => {
