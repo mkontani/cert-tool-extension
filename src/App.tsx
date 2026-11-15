@@ -12,12 +12,16 @@ interface Tool extends TabSpec {
   readonly Panel: ComponentType;
 }
 
+/**
+ * The Inspector, the main tool, comes first, then the tools by how close they are to it: Lint also checks certificates,
+ * and Public Key reads the keys in them. The generators come last, in the order they are used: a key pair, then a CSR.
+ */
 const TOOLS: readonly Tool[] = [
-  { id: 'keygen', label: 'Gen KeyPair', icon: Key, Panel: KeyPairGenerator },
-  { id: 'csr', label: 'Gen CSR', icon: FileSignature, Panel: CSRGenerator },
-  { id: 'pubkey', label: 'Public Key', icon: KeyRound, Panel: PublicKeyTools },
   { id: 'inspector', label: 'Inspector', icon: Search, Panel: CertInspector },
   { id: 'lint', label: 'Lint', icon: ShieldCheck, Panel: CertLinter },
+  { id: 'pubkey', label: 'Public Key', icon: KeyRound, Panel: PublicKeyTools },
+  { id: 'keygen', label: 'Gen KeyPair', icon: Key, Panel: KeyPairGenerator },
+  { id: 'csr', label: 'Gen CSR', icon: FileSignature, Panel: CSRGenerator },
 ];
 
 const INITIAL_TOOL = TOOLS.findIndex(tool => tool.id === 'inspector');
