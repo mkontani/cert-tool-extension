@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Key, RefreshCw } from 'lucide-react';
 import CopyButton from './CopyButton';
 import ErrorBanner from './ErrorBanner';
 import SaveButton from './SaveButton';
@@ -99,7 +99,8 @@ export default function KeyPairGenerator() {
 
     return (
         <div className="glass-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '0.5rem' }}>
+                <Key size={24} color="#f59e0b" />
                 <h2 style={{ margin: 0 }}>Key Pair Generation</h2>
             </div>
 

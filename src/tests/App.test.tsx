@@ -36,6 +36,21 @@ describe('App tabs', () => {
         expect(screen.getByRole('heading', { name: 'Key Match' })).toBeVisible();
     });
 
+    it('puts the icon of its tab before the heading of every tool', () => {
+        const { container } = render(<App />);
+        const iconOf = (element: Element | null | undefined) => [...element?.classList ?? []].find(name => name.startsWith('lucide-'));
+        const headings = [...container.querySelectorAll('h2')];
+        expect(headings.map(heading => heading.textContent)).toEqual([
+            'Key Pair Generation', 'CSR Generation', 'Public Key Derivation', 'Key Match', 'Certificate Inspector', 'Certificate Linter',
+        ]);
+        for (const heading of headings) expect(heading.previousElementSibling?.tagName).toBe('svg');
+        const tabIcons = [...container.querySelectorAll('[role=tab]')].map(tab => iconOf(tab.querySelector('svg')));
+        const headingIcons = headings.map(heading => iconOf(heading.previousElementSibling));
+        // Gen KeyPair, Gen CSR, Public Key (its Derive and Match sub-tabs, which follow the tool tabs), Inspector, Lint.
+        expect(headingIcons).toEqual([tabIcons[0], tabIcons[1], tabIcons[5], tabIcons[6], tabIcons[3], tabIcons[4]]);
+        expect(new Set(headingIcons).size).toBe(headingIcons.length);
+    });
+
     it('keeps what was typed in a tab while another tab is open', () => {
         render(<App />);
         const input = screen.getByLabelText('Input (Certificate or CSR)');

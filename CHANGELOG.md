@@ -9,6 +9,7 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ### Changed
 - The Derive PubKey tab is now called Public Key. It holds two sub-tabs: Derive, which takes the public key out of a PEM as before, and Match. Like the tool tabs, the sub-tabs keep what was typed in each, and the arrow keys move between them.
+- Gen KeyPair: the Key Pair Generation heading now has its tab's icon, as every other tool's heading does. Public Key Derivation takes the Public Key tab's icon, so no two headings share one.
 
 ## [1.4.0] - 2026-11-15
 

@@ -1,12 +1,12 @@
 import { useState, type ComponentType } from 'react';
-import { ArrowDownCircle, GitCompareArrows } from 'lucide-react';
+import { GitCompareArrows, KeyRound } from 'lucide-react';
 import KeyMatcher from './KeyMatcher';
 import PubKeyDeriver from './PubKeyDeriver';
 import TabList, { type TabSpec } from './TabList';
 import { tabPanelProps } from './tabIds';
 
 const TOOLS: readonly (TabSpec & { readonly Panel: ComponentType })[] = [
-    { id: 'pubkey-derive', label: 'Derive', icon: ArrowDownCircle, Panel: PubKeyDeriver },
+    { id: 'pubkey-derive', label: 'Derive', icon: KeyRound, Panel: PubKeyDeriver },
     { id: 'pubkey-match', label: 'Match', icon: GitCompareArrows, Panel: KeyMatcher },
 ];
 
