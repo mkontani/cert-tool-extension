@@ -38,7 +38,7 @@ Check whether a server certificate is safe to deploy, similar to [zlint](https:/
 
 ### 4. Public Key
 Two tools, on the **Derive** and **Match** sub-tabs.
-![Public Key Derivation](screenshots/store/5-derive.png)
+![Public Key](screenshots/store/5-public-key.png)
 - **Derive**: Extract the public key from a private key (PKCS#8, PKCS#1 or SEC1), a certificate or a CSR. The input type and algorithm are detected automatically.
 - **Match**: Paste two PEMs to check that they are for the same key pair: a private key and its certificate or CSR, a CSR and the certificate issued from it, or two certificates that share a key. Paste a `fullchain.pem` as is; its first certificate is compared, and the verdict names it and says how many other blocks were left out. The keys are compared by their numbers, not their bytes, so an EC key written compressed still matches. The verdict shows what it rests on: what was compared, and each key's public key pin (`pin-sha256`), the one the Inspector shows, with a Copy button to check it elsewhere.
 
