@@ -4,6 +4,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-16
+
 ### Added
 - Public Key: the Match sub-tab says whether two PEMs are for the same key pair. Each one can be a private key, certificate, CSR or public key, so it checks that a certificate was issued for a private key, that a CSR was made with it, or that a renewed certificate kept its key. A `fullchain.pem` is compared by its first certificate, and the verdict names that certificate and says how many other blocks were left out. The keys are compared by their numbers rather than their bytes, so an EC key with a compressed point, or an RSA key marked for RSASSA-PSS, still matches.
   - The verdict shows what it rests on: what was compared (the RSA modulus and exponent, or the EC curve and point), and each key's public key pin (`pin-sha256`), the same one the Inspector shows, with a Copy button. When the same key is written two ways, such as with its EC point compressed, its two pins differ, and the verdict says why.
@@ -151,7 +153,8 @@ All notable changes to Cert Tool are documented here. The format follows [Keep a
 ### Added
 - Initial release: key pair generation (RSA, ECDSA, Ed25519), CSR generation, public key derivation, and a certificate/CSR inspector.
 
-[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.4.0...HEAD
+[Unreleased]: https://github.com/mkontani/cert-tool-extension/compare/1.5.0...HEAD
+[1.5.0]: https://github.com/mkontani/cert-tool-extension/compare/1.4.0...1.5.0
 [1.4.0]: https://github.com/mkontani/cert-tool-extension/compare/1.3.0...1.4.0
 [1.3.0]: https://github.com/mkontani/cert-tool-extension/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/mkontani/cert-tool-extension/compare/1.1.0...1.2.0
